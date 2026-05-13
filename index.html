@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1a1a2e">
+<meta name="theme-color" content="#2c2416">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Rater">
@@ -11,270 +11,145 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Restaurant Rater</title>
 <style>
-  :root {
-    --bg: #0d1117;
-    --bg2: #161b22;
-    --bg3: #1f2937;
-    --surface: #262e39;
-    --surface2: #30394f;
-    --border: rgba(255,255,255,0.12);
-    --border2: rgba(255,255,255,0.20);
-    --accent: #fbbf24;
-    --accent2: #fcd34d;
-    --accent-dim: rgba(251,191,36,0.15);
-    --text: #f3f4f6;
-    --text2: #d1d5db;
-    --text3: #9ca3af;
-    --danger: #ef4444;
-    --success: #10b981;
-    --r: 12px;
-    --r2: 8px;
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-  
-  #app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
-  
-  /* NAV BOTTOM */
-  .nav-bottom {
-    display: flex; background: var(--bg2); border-top: 0.5px solid var(--border);
-    padding: 8px 0 calc(8px + var(--safe-bottom)); flex-shrink: 0;
-  }
-  .nav-btn {
-    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-    padding: 6px 0; background: none; border: none; color: var(--text3);
-    font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
-    transition: color 0.2s;
-  }
-  .nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; }
-  .nav-btn.active { color: var(--accent); }
-  
-  /* SCREENS */
-  .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
-  .screen.active { display: flex; }
-  
-  /* HEADER */
-  .header {
-    padding: calc(var(--safe-top) + 16px) 20px 16px;
-    background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0;
-  }
-  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
-  .header p { font-size: 13px; color: var(--text3); margin-top: 2px; }
-  
-  /* SCROLL AREA */
-  .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 20px calc(16px + var(--safe-bottom)); }
-  
-  /* CARDS */
-  .card {
-    background: var(--surface); border: 0.5px solid var(--border);
-    border-radius: var(--r); padding: 16px; margin-bottom: 12px;
-  }
-  .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 12px; }
-  
-  /* INPUTS */
-  input[type="text"], input[type="number"], select, textarea {
-    width: 100%; background: var(--bg3); border: 0.5px solid var(--border2);
-    border-radius: var(--r2); color: var(--text); font-size: 15px;
-    padding: 12px 14px; outline: none; appearance: none; -webkit-appearance: none;
-    transition: border-color 0.2s;
-  }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a8a4a0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
-  textarea { resize: none; min-height: 72px; font-family: inherit; }
-  label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px; }
-  .field { margin-bottom: 14px; }
-  
-  /* BUTTONS */
-  .btn {
-    width: 100%; padding: 14px; border-radius: var(--r); border: none;
-    font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s;
-    letter-spacing: 0.2px;
-  }
-  .btn:active { transform: scale(0.98); }
-  .btn-primary { background: var(--accent); color: #1a1100; }
-  .btn-secondary { background: var(--surface2); color: var(--text); border: 0.5px solid var(--border2); }
-  .btn-danger { background: rgba(232,93,93,0.15); color: var(--danger); border: 0.5px solid rgba(232,93,93,0.3); }
-  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; border-radius: var(--r2); }
-  
-  /* CHIPS / TAGS */
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip {
-    padding: 7px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
-    border: 0.5px solid var(--border2); background: var(--bg3); color: var(--text2);
-    transition: all 0.15s; user-select: none;
-  }
-  .chip.selected { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  
-  /* SCORE SLIDER */
-  .score-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
-  .score-label { font-size: 13px; color: var(--text2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .score-slider-wrap { display: flex; align-items: center; gap: 10px; flex: 1.4; }
-  input[type="range"] {
-    flex: 1; -webkit-appearance: none; appearance: none;
-    height: 4px; border-radius: 2px; background: var(--surface2);
-    outline: none; border: none; padding: 0;
-  }
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 22px; height: 22px;
-    border-radius: 50%; background: var(--accent);
-    cursor: pointer; border: 3px solid var(--bg);
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-  .score-val {
-    font-size: 15px; font-weight: 700; color: var(--accent);
-    min-width: 34px; text-align: right;
-  }
-  .score-divider { border: none; border-top: 0.5px solid var(--border); margin: 4px 0; }
-  
-  /* SECTION HEADER */
-  .section-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .section-title { font-size: 15px; font-weight: 600; color: var(--text); }
-  .section-badge {
-    font-size: 11px; background: var(--accent-dim); color: var(--accent);
-    padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--accent);
-  }
-  
-  /* TOGGLE */
-  .toggle-group { display: flex; background: var(--bg3); border-radius: var(--r2); padding: 3px; gap: 3px; }
-  .toggle-opt {
-    flex: 1; padding: 9px; text-align: center; font-size: 13px;
-    border-radius: 6px; cursor: pointer; color: var(--text3); transition: all 0.15s;
-    border: none; background: none;
-  }
-  .toggle-opt.active { background: var(--surface2); color: var(--text); font-weight: 600; }
-  
-  /* STEP INDICATOR */
-  .steps { display: flex; align-items: center; gap: 6px; padding: 12px 20px; background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
-  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface2); transition: all 0.3s; }
-  .step-dot.done { background: var(--accent); }
-  .step-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
-  .step-label { font-size: 12px; color: var(--text2); margin-left: auto; }
-  
-  /* RANKING */
-  .rank-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 0; border-bottom: 0.5px solid var(--border);
-  }
-  .rank-item:last-child { border-bottom: none; }
-  .rank-num { font-size: 16px; font-weight: 800; color: var(--text3); min-width: 24px; }
-  .rank-num.gold { color: #f0c040; }
-  .rank-num.silver { color: #c0c0c0; }
-  .rank-num.bronze { color: #cd7f32; }
-  .rank-info { flex: 1; min-width: 0; }
-  .rank-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rank-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
-  .rank-score { font-size: 20px; font-weight: 800; color: var(--accent); }
-  .rank-score-sm { font-size: 12px; color: var(--text3); font-weight: 400; }
-  
-  /* TABS */
-  .tabs { display: flex; background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0; padding: 0 20px; }
-  .tab { padding: 12px 16px; font-size: 13px; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-  
-  /* EMPTY STATE */
-  .empty { text-align: center; padding: 60px 20px; }
-  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
-  .empty p { color: var(--text3); font-size: 14px; }
-  
-  /* FAB */
-  .fab {
-    position: fixed; bottom: calc(80px + var(--safe-bottom)); right: 20px;
-    width: 52px; height: 52px; border-radius: 50%; background: var(--accent);
-    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 20px rgba(232,184,109,0.4); transition: transform 0.15s; z-index: 10;
-  }
-  .fab:active { transform: scale(0.92); }
-  .fab svg { width: 24px; height: 24px; stroke: #1a1100; fill: none; stroke-width: 2.5; }
-  
-  /* MODAL */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
-    display: none; align-items: flex-end; padding: 0;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    width: 100%; background: var(--bg2); border-radius: var(--r) var(--r) 0 0;
-    padding: 20px 20px calc(20px + var(--safe-bottom));
-    border-top: 0.5px solid var(--border2);
-  }
-  .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
-  
-  /* RESULT CARD */
-  .result-score { text-align: center; padding: 24px 0 16px; }
-  .result-big { font-size: 64px; font-weight: 900; color: var(--accent); letter-spacing: -3px; line-height: 1; }
-  .result-label { font-size: 13px; color: var(--text3); margin-top: 4px; }
-  .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 16px 0; }
-  .result-mini { background: var(--bg3); border-radius: var(--r2); padding: 10px; text-align: center; }
-  .result-mini-val { font-size: 18px; font-weight: 700; color: var(--text); }
-  .result-mini-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
-
-  /* PILL */
-  .pill { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--text2); margin: 3px; }
-  .pill button { background: none; border: none; color: var(--text3); cursor: pointer; padding: 0; font-size: 14px; line-height: 1; }
-
-  /* PEOPLE MANAGER */
-  .people-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; }
-
-  /* NUMBER STEPPER */
-  .stepper { display: flex; align-items: center; gap: 12px; }
-  .stepper button { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); border: 0.5px solid var(--border2); color: var(--text); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
-  .stepper button:active { background: var(--accent-dim); }
-  .stepper span { font-size: 20px; font-weight: 700; min-width: 32px; text-align: center; }
-
-  .gap-8 { gap: 8px; }
-  .mt-12 { margin-top: 12px; }
-  .mt-8 { margin-top: 8px; }
-  .flex { display: flex; }
-  .flex-col { flex-direction: column; }
-  .items-center { align-items: center; }
-  .justify-between { justify-content: space-between; }
-  .text-accent { color: var(--accent); }
-  .text-muted { color: var(--text3); font-size: 13px; }
-  .fw-700 { font-weight: 700; }
-  .fs-13 { font-size: 13px; }
+:root {
+  --bg:       #faf7f2;
+  --bg2:      #f3ede3;
+  --bg3:      #ede5d8;
+  --surface:  #ffffff;
+  --surface2: #f0e9dc;
+  --border:   rgba(100,80,40,0.12);
+  --border2:  rgba(100,80,40,0.22);
+  --accent:   #b5863a;
+  --accent2:  #d4a44c;
+  --accent-dim: rgba(181,134,58,0.12);
+  --text:     #1e1a14;
+  --text2:    #4a3f2f;
+  --text3:    #8a7a62;
+  --danger:   #c0392b;
+  --success:  #27ae60;
+  --r:  12px;
+  --r2:  8px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+#app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.nav-bottom { display: flex; background: var(--surface); border-top: 0.5px solid var(--border2); padding: 8px 0 calc(8px + var(--safe-bottom)); flex-shrink: 0; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 0; background: none; border: none; color: var(--text3); font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; transition: color 0.2s; }
+.nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.nav-btn.active { color: var(--accent); }
+.screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.screen.active { display: flex; }
+.header { padding: calc(var(--safe-top) + 16px) 20px 16px; background: var(--surface); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+.header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+.header p { font-size: 13px; color: var(--text3); margin-top: 2px; }
+.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 20px calc(16px + var(--safe-bottom)); background: var(--bg); }
+.card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+.card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 12px; }
+input[type="text"], input[type="number"], select, textarea { width: 100%; background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--r2); color: var(--text); font-size: 15px; padding: 12px 14px; outline: none; appearance: none; -webkit-appearance: none; transition: border-color 0.2s; font-family: inherit; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a7a62' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+textarea { resize: none; min-height: 72px; }
+label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px; }
+.field { margin-bottom: 14px; }
+.btn { width: 100%; padding: 14px; border-radius: var(--r); border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; letter-spacing: 0.2px; font-family: inherit; }
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 0.5px solid var(--border2); }
+.btn-danger { background: rgba(192,57,43,0.1); color: var(--danger); border: 0.5px solid rgba(192,57,43,0.3); }
+.btn-sm { padding: 8px 14px; font-size: 13px; width: auto; border-radius: var(--r2); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 7px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 0.5px solid var(--border2); background: var(--bg2); color: var(--text2); transition: all 0.15s; user-select: none; }
+.chip.selected { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.score-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid var(--border); }
+.score-row:last-child { border-bottom: none; }
+.score-label { font-size: 13px; color: var(--text2); min-width: 68px; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score-slider-wrap { display: flex; align-items: center; gap: 8px; flex: 1; }
+input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: var(--bg3); outline: none; border: none; padding: 0; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+.score-val { font-size: 14px; font-weight: 700; color: var(--accent); min-width: 42px; text-align: right; }
+.adj-positive { color: var(--success) !important; }
+.adj-negative { color: var(--danger) !important; }
+.adj-zero { color: var(--text3) !important; }
+.steps { display: flex; align-items: center; gap: 6px; padding: 10px 20px; background: var(--surface); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+.step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); transition: all 0.3s; }
+.step-dot.done { background: var(--accent); opacity: 0.4; }
+.step-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+.step-label { font-size: 12px; color: var(--text3); margin-left: auto; }
+.rank-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+.rank-item:last-child { border-bottom: none; }
+.rank-num { font-size: 16px; font-weight: 800; color: var(--text3); min-width: 24px; }
+.rank-num.gold { color: #c8960a; }
+.rank-num.silver { color: #8a8a8a; }
+.rank-num.bronze { color: #a0522d; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.rank-score { font-size: 20px; font-weight: 800; color: var(--accent); }
+.tabs { display: flex; background: var(--surface); border-bottom: 0.5px solid var(--border); flex-shrink: 0; padding: 0 20px; }
+.tab { padding: 12px 14px; font-size: 13px; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.empty { text-align: center; padding: 60px 20px; }
+.empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty p { color: var(--text3); font-size: 14px; line-height: 1.6; }
+.fab { position: fixed; bottom: calc(80px + var(--safe-bottom)); right: 20px; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(181,134,58,0.4); transition: transform 0.15s; z-index: 10; }
+.fab:active { transform: scale(0.92); }
+.fab svg { width: 24px; height: 24px; stroke: #fff; fill: none; stroke-width: 2.5; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: flex-end; }
+.modal-overlay.open { display: flex; }
+.modal { width: 100%; background: var(--surface); border-radius: var(--r) var(--r) 0 0; padding: 20px 20px calc(20px + var(--safe-bottom)); border-top: 0.5px solid var(--border2); max-height: 88dvh; overflow-y: auto; }
+.modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+.result-score { text-align: center; padding: 20px 0 14px; }
+.result-big { font-size: 60px; font-weight: 900; letter-spacing: -3px; line-height: 1; }
+.result-label { font-size: 13px; color: var(--text3); margin-top: 4px; }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
+.result-mini { background: var(--bg2); border-radius: var(--r2); padding: 10px; text-align: center; }
+.result-mini-val { font-size: 17px; font-weight: 700; color: var(--text); }
+.result-mini-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+.toggle-group { display: flex; background: var(--bg3); border-radius: var(--r2); padding: 3px; gap: 3px; }
+.toggle-opt { flex: 1; padding: 9px; text-align: center; font-size: 13px; border-radius: 6px; cursor: pointer; color: var(--text3); transition: all 0.15s; border: none; background: none; font-family: inherit; }
+.toggle-opt.active { background: var(--surface); color: var(--accent); font-weight: 700; border: 0.5px solid var(--border2); }
+.stepper { display: flex; align-items: center; gap: 16px; }
+.stepper button { width: 36px; height: 36px; border-radius: 50%; background: var(--bg2); border: 0.5px solid var(--border2); color: var(--text); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+.stepper button:active { background: var(--accent-dim); }
+.stepper span { font-size: 20px; font-weight: 700; min-width: 32px; text-align: center; color: var(--text); }
+.wizard-footer { padding: 12px 20px calc(12px + var(--safe-bottom)); background: var(--surface); border-top: 0.5px solid var(--border); flex-shrink: 0; display: flex; gap: 10px; }
+.mt-12 { margin-top: 12px; }
+.flex { display: flex; }
+.gap-8 { gap: 8px; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.text-muted { color: var(--text3); font-size: 13px; }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ═══════════════════════════════════
-       SCREEN: HOME (visits list)
-  ═══════════════════════════════════ -->
   <div class="screen active" id="screen-home">
     <div class="header">
       <h1>🍽 Restaurant Rater</h1>
       <p id="home-subtitle">0 restaurantes puntuados</p>
     </div>
     <div class="scroll" id="home-list">
-      <div class="empty">
-        <div class="empty-icon">🍴</div>
-        <p>Todavía no hay visitas.<br>Pulsa + para empezar.</p>
-      </div>
+      <div class="empty"><div class="empty-icon">🍴</div><p>Todavía no hay visitas.<br>Pulsa + para empezar.</p></div>
     </div>
     <button class="fab" onclick="startNewVisit()">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
   </div>
 
-  <!-- ═══════════════════════════════════
-       SCREEN: NUEVA VISITA (wizard)
-  ═══════════════════════════════════ -->
   <div class="screen" id="screen-new">
-    <div class="header" style="padding-bottom:12px;">
+    <div class="header" style="padding-bottom:10px;">
       <div class="flex items-center justify-between">
-        <button onclick="cancelNew()" style="background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0;">✕ Cancelar</button>
+        <button onclick="cancelNew()" style="background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:0;font-family:inherit;">✕ Cancelar</button>
         <span id="wizard-title" style="font-size:14px;font-weight:600;color:var(--text2)">Nueva visita</span>
-        <div style="width:60px"></div>
+        <div style="width:70px"></div>
       </div>
     </div>
-    <div class="steps" id="wizard-steps">
+    <div class="steps">
       <div class="step-dot active" id="dot-0"></div>
       <div class="step-dot" id="dot-1"></div>
       <div class="step-dot" id="dot-2"></div>
@@ -284,38 +159,28 @@
       <span class="step-label" id="step-label">1 / 6</span>
     </div>
     <div class="scroll" id="wizard-content"></div>
-    <div style="padding:12px 20px calc(12px + var(--safe-bottom)); background:var(--bg2); border-top:0.5px solid var(--border); flex-shrink:0;" id="wizard-footer">
-      <button class="btn btn-primary" id="wizard-next-btn" onclick="wizardNext()">Siguiente →</button>
+    <div class="wizard-footer">
+      <button class="btn btn-secondary" id="wizard-back-btn" onclick="wizardBack()" style="flex:1;display:none;">← Atrás</button>
+      <button class="btn btn-primary" id="wizard-next-btn" onclick="wizardNext()" style="flex:2;">Siguiente →</button>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════
-       SCREEN: RANKING
-  ═══════════════════════════════════ -->
   <div class="screen" id="screen-ranking">
-    <div class="header">
-      <h1>Ranking</h1>
-    </div>
+    <div class="header"><h1>Ranking</h1></div>
     <div class="tabs">
       <div class="tab active" onclick="switchTab('global')">Global</div>
       <div class="tab" onclick="switchTab('category')">Por categoría</div>
       <div class="tab" onclick="switchTab('chooser')">Electores</div>
     </div>
-    <div class="scroll" id="ranking-content">
+    <div class="scroll" style="padding-top:8px;">
       <div id="tab-global" class="tab-content active"></div>
       <div id="tab-category" class="tab-content"></div>
       <div id="tab-chooser" class="tab-content"></div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════
-       SCREEN: AJUSTES (comensales)
-  ═══════════════════════════════════ -->
   <div class="screen" id="screen-settings">
-    <div class="header">
-      <h1>Comensales</h1>
-      <p>Gestiona la lista de personas</p>
-    </div>
+    <div class="header"><h1>Comensales</h1><p>Gestiona la lista de personas</p></div>
     <div class="scroll">
       <div class="card">
         <div class="card-title">Añadir persona</div>
@@ -331,7 +196,6 @@
     </div>
   </div>
 
-  <!-- NAV BOTTOM -->
   <nav class="nav-bottom">
     <button class="nav-btn active" id="nav-home" onclick="goScreen('home')">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -346,35 +210,26 @@
       Personas
     </button>
   </nav>
-
 </div>
 
-<!-- MODAL: detail visit -->
 <div class="modal-overlay" id="detail-modal" onclick="closeDetail(event)">
   <div class="modal" id="detail-content"></div>
 </div>
 
+<div id="toast" style="position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--danger);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;max-width:90vw;text-align:center;"></div>
+
 <script>
-// ═══════════════════════════════════════════
-// DB LAYER — ready for Firebase in v2
-// ═══════════════════════════════════════════
+// ═══════════════════════════ DB ═══════════════════════════
 const DB = {
   _db: null,
   async open() {
     return new Promise((res, rej) => {
-      const req = indexedDB.open('restaurant-rater', 1);
+      const req = indexedDB.open('restaurant-rater', 3);
       req.onupgradeneeded = e => {
         const db = e.target.result;
-        if (!db.objectStoreNames.contains('visits')) {
-          const vs = db.createObjectStore('visits', { keyPath: 'id' });
-          vs.createIndex('date', 'date');
-        }
-        if (!db.objectStoreNames.contains('people')) {
-          db.createObjectStore('people', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('config')) {
-          db.createObjectStore('config', { keyPath: 'key' });
-        }
+        if (!db.objectStoreNames.contains('visits')) db.createObjectStore('visits', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('people')) db.createObjectStore('people', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('config')) db.createObjectStore('config', { keyPath: 'key' });
       };
       req.onsuccess = e => { this._db = e.target.result; res(); };
       req.onerror = () => rej(req.error);
@@ -392,7 +247,7 @@ const DB = {
     return new Promise((res, rej) => {
       const tx = this._db.transaction(store, 'readwrite');
       const req = tx.objectStore(store).put(obj);
-      req.onsuccess = () => res(req.result);
+      req.onsuccess = () => res();
       req.onerror = () => rej(req.error);
     });
   },
@@ -406,86 +261,146 @@ const DB = {
   }
 };
 
-// ═══════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════
+// ═══════════════════════════ STATE ═══════════════════════════
 let people = [];
 let visits = [];
 let wizardData = {};
 let wizardStep = 0;
+const TOTAL_STEPS = 6;
+const DEFAULT_SCORE = 5.00;
+const STEP = 0.05;
 
-const CATEGORIES = [
-  'Española','Italiana','Japonesa','Mexicana','Francesa',
-  'Griega','Libanesa','India','China','Tailandesa','Americana',
-  'Árabe','Peruana','Brasileña','Turca','Hamburguesería',
-  'Pizzería','Kebab','Sushi','Mariscos','Vegetariana','Coctelería',
-  'Georgiana','Colombiana','Ecuatoriana','Pastelería','Cafetería','Bar','Otro'
-];
+const CATEGORIES = ['Americana','Árabe','Bar','Brasileña','Cafetería','China','Colombiana','Ecuatoriana','Española','Francesa','Georgiana','Griega','Hamburguesería','India','Italiana','Japonesa','Kebab','Libanesa','Mariscos','Mexicana','Otro','Pastelería','Peruana','Pizzería','Sushi','Tailandesa','Turca','Vegetariana'];
 
-// ═══════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════
+// ═══════════════════════════ INIT ═══════════════════════════
 async function init() {
   await DB.open();
   people = await DB.getAll('people');
   visits = await DB.getAll('visits');
-
-  // seed default people if empty
   if (people.length === 0) {
-    const defaults = ['Yo','Ana','Carlos','María','Luis','Sara','Pablo','Laura'];
-    for (const name of defaults) {
+    for (const name of ['Ana','Carlos','Laura','Luis','María','Pablo','Sara','Yo']) {
       const p = { id: crypto.randomUUID(), name, createdAt: Date.now() };
       await DB.put('people', p);
       people.push(p);
     }
   }
-
+  people.sort((a,b) => a.name.localeCompare(b.name));
   renderHome();
   renderPeopleSettings();
 }
 
-// ═══════════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════════
+// ═══════════════════════════ SCORING ═══════════════════════════
+// KEY FIX: scores object is populated at render time with DEFAULT_SCORE.
+// plateAvg reads scores[id] with fallback to DEFAULT_SCORE.
+// adjustments use parseFloat to avoid string concatenation bugs.
+// Final score CAN exceed 0-10 range intentionally (adjustments).
+
+function getScore(scoresObj, id) {
+  const v = scoresObj[id];
+  return (v !== undefined && v !== null) ? parseFloat(v) : DEFAULT_SCORE;
+}
+
+function plateAvg(plate, ids) {
+  if (!ids || ids.length === 0) return DEFAULT_SCORE;
+  const sum = ids.reduce((acc, id) => acc + getScore(plate.scores, id), 0);
+  return sum / ids.length;
+}
+
+function calcBreakdown(visit) {
+  const ids = visit.diners || [];
+
+  // Entrantes
+  let sScore = DEFAULT_SCORE;
+  if (visit.starters && visit.starters.length > 0) {
+    const avgs = visit.starters.map(p => plateAvg(p, ids));
+    sScore = avgs.reduce((a,b) => a+b, 0) / avgs.length;
+  }
+
+  // Principales
+  let mScore = DEFAULT_SCORE;
+  if (visit.mains && visit.mains.length > 0) {
+    let avgs;
+    if (visit.mainShared) {
+      avgs = visit.mains.map(p => plateAvg(p, ids));
+    } else {
+      // Individual: plate[i] belongs to diner[i]
+      avgs = visit.mains.map((p, i) => {
+        const id = ids[i];
+        return id ? getScore(p.scores, id) : DEFAULT_SCORE;
+      });
+    }
+    mScore = avgs.reduce((a,b) => a+b, 0) / avgs.length;
+  }
+
+  // Postres
+  const hasDessert = visit.desserts && visit.desserts.length > 0;
+  let dScore = null;
+  if (hasDessert) {
+    const avgs = visit.desserts.map(p => plateAvg(p, ids));
+    dScore = avgs.reduce((a,b) => a+b, 0) / avgs.length;
+  }
+
+  // Pesos
+  const wS = hasDessert ? 0.25 : 0.33;
+  const wM = hasDessert ? 0.50 : 0.67;
+  const wD = hasDessert ? 0.25 : 0.00;
+  const base = sScore * wS + mScore * wM + (dScore !== null ? dScore * wD : 0);
+
+  // Ajustes (media de todos los comensales, puede ser negativa)
+  let adjSvc = 0, adjPrc = 0;
+  if (visit.adjustments) {
+    const vals = Object.values(visit.adjustments);
+    if (vals.length > 0) {
+      adjSvc = vals.reduce((a,b) => a + (parseFloat(b.service) || 0), 0) / vals.length;
+      adjPrc = vals.reduce((a,b) => a + (parseFloat(b.price)   || 0), 0) / vals.length;
+    }
+  }
+
+  // Nota final: puede ir fuera de 0-10 por diseño
+  const final = base + adjSvc + adjPrc;
+
+  return { sScore, mScore, dScore, hasDessert, adjSvc, adjPrc, base, final };
+}
+
+function calcFinalScore(visit) {
+  return calcBreakdown(visit).final;
+}
+
+// ═══════════════════════════ NAV ═══════════════════════════
 function goScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
-  const navEl = document.getElementById('nav-' + name);
-  if (navEl) navEl.classList.add('active');
+  const nav = document.getElementById('nav-' + name);
+  if (nav) nav.classList.add('active');
   if (name === 'ranking') renderRanking();
   if (name === 'home') renderHome();
   if (name === 'settings') renderPeopleSettings();
 }
 
-// ═══════════════════════════════════════════
-// HOME
-// ═══════════════════════════════════════════
+// ═══════════════════════════ HOME ═══════════════════════════
 function renderHome() {
   const list = document.getElementById('home-list');
-  const sub = document.getElementById('home-subtitle');
-  sub.textContent = visits.length + ' restaurante' + (visits.length !== 1 ? 's' : '') + ' puntuado' + (visits.length !== 1 ? 's' : '');
-
+  document.getElementById('home-subtitle').textContent = visits.length + ' restaurante' + (visits.length !== 1 ? 's' : '') + ' puntuado' + (visits.length !== 1 ? 's' : '');
   if (visits.length === 0) {
     list.innerHTML = '<div class="empty"><div class="empty-icon">🍴</div><p>Todavía no hay visitas.<br>Pulsa + para empezar.</p></div>';
     return;
   }
-
-  const sorted = [...visits].sort((a, b) => b.date - a.date);
-  list.innerHTML = sorted.map(v => {
+  list.innerHTML = [...visits].sort((a,b) => b.date - a.date).map(v => {
     const score = calcFinalScore(v);
-    const dateStr = new Date(v.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
     const chooser = people.find(p => p.id === v.chooserId);
+    const dateStr = new Date(v.date).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'});
+    const sc = scoreColor(score);
     return `<div class="card" style="cursor:pointer;" onclick="showDetail('${v.id}')">
       <div class="flex items-center justify-between">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.restaurantName}</div>
+          <div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(v.restaurantName)}</div>
           <div style="font-size:12px;color:var(--text3);margin-top:3px;">${v.category} · ${dateStr}</div>
-          ${chooser ? `<div style="font-size:12px;color:var(--text3);">Eligió: ${chooser.name}</div>` : ''}
-          <div style="font-size:12px;color:var(--text3);">${v.diners.length} comensal${v.diners.length !== 1 ? 'es' : ''}</div>
+          ${chooser ? `<div style="font-size:12px;color:var(--text3);">Eligió: <span style="color:var(--text2)">${chooser.name}</span></div>` : ''}
+          <div style="font-size:12px;color:var(--text3);">${v.diners.length} comensal${v.diners.length!==1?'es':''}</div>
         </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:32px;font-weight:900;color:var(--accent);letter-spacing:-2px;">${score.toFixed(2)}</div>
+        <div style="text-align:right;flex-shrink:0;padding-left:12px;">
+          <div style="font-size:32px;font-weight:900;color:${sc};letter-spacing:-2px;">${score.toFixed(2)}</div>
           <div style="font-size:10px;color:var(--text3);">/ 10</div>
         </div>
       </div>
@@ -493,717 +408,365 @@ function renderHome() {
   }).join('');
 }
 
-// ═══════════════════════════════════════════
-// SCORING CALC
-// ═══════════════════════════════════════════
-function calcFinalScore(visit) {
-  // Entrantes: media de (media por plato) promediada entre todos los comensales
-  let starterScore = 0;
-  if (visit.starters && visit.starters.length > 0) {
-    const plateScores = visit.starters.map(plate => {
-      const scores = Object.values(plate.scores).map(Number).filter(n => !isNaN(n));
-      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-    });
-    starterScore = plateScores.reduce((a, b) => a + b, 0) / plateScores.length;
-  }
-
-  // Principales
-  let mainScore = 0;
-  if (visit.mains && visit.mains.length > 0) {
-    const plateScores = visit.mains.map(plate => {
-      const scores = Object.values(plate.scores).map(Number).filter(n => !isNaN(n));
-      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-    });
-    mainScore = plateScores.reduce((a, b) => a + b, 0) / plateScores.length;
-  }
-
-  // Postres
-  let dessertScore = 0;
-  const hasDessert = visit.desserts && visit.desserts.length > 0;
-  if (hasDessert) {
-    const plateScores = visit.desserts.map(plate => {
-      const scores = Object.values(plate.scores).map(Number).filter(n => !isNaN(n));
-      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-    });
-    dessertScore = plateScores.reduce((a, b) => a + b, 0) / plateScores.length;
-  }
-
-  // Pesos
-  let wStarter, wMain, wDessert;
-  if (hasDessert) { wStarter = 0.25; wMain = 0.50; wDessert = 0.25; }
-  else { wStarter = 0.33; wMain = 0.67; wDessert = 0; }
-
-  const baseScore = starterScore * wStarter + mainScore * wMain + dessertScore * wDessert;
-
-  // Servicio y precio: media del delta de todos los comensales
-  let adjustService = 0, adjustPrice = 0;
-  if (visit.adjustments) {
-    const adjValues = Object.values(visit.adjustments);
-    if (adjValues.length > 0) {
-      adjustService = adjValues.reduce((a, b) => a + (b.service || 0), 0) / adjValues.length;
-      adjustPrice = adjValues.reduce((a, b) => a + (b.price || 0), 0) / adjValues.length;
-    }
-  }
-
-  return Math.max(0, Math.min(10, baseScore + adjustService + adjustPrice));
+function scoreColor(s) {
+  return s >= 8 ? 'var(--success)' : s >= 6 ? 'var(--accent)' : s >= 4 ? '#c07830' : 'var(--danger)';
 }
 
-// ═══════════════════════════════════════════
-// WIZARD
-// ═══════════════════════════════════════════
-const TOTAL_STEPS = 6;
-
+// ═══════════════════════════ WIZARD ═══════════════════════════
 function startNewVisit() {
   wizardData = {
-    id: crypto.randomUUID(),
-    date: Date.now(),
-    restaurantName: '',
-    category: '',
-    chooserId: null,
-    diners: [],
-    starterCount: 1,
-    mainShared: false,
-    mainCount: 1,
-    hasDessert: true,
-    dessertCount: 1,
-    starters: [],
-    mains: [],
-    desserts: [],
-    adjustments: {},
-    pricePerPerson: null,
-    note: ''
+    id: crypto.randomUUID(), date: Date.now(),
+    restaurantName:'', category:'', chooserId:null,
+    diners:[], starterCount:1, mainShared:false, mainCount:2,
+    hasDessert:true, dessertCount:1,
+    starters:[], mains:[], desserts:[],
+    adjustments:{}, pricePerPerson:null, note:''
   };
   wizardStep = 0;
   goScreen('new');
   renderWizardStep();
 }
 
-function cancelNew() {
-  goScreen('home');
-}
+function cancelNew() { goScreen('home'); }
 
-function updateStepIndicator() {
+function updateStepUI() {
   for (let i = 0; i < TOTAL_STEPS; i++) {
-    const dot = document.getElementById('dot-' + i);
-    if (!dot) continue;
-    dot.className = 'step-dot ' + (i < wizardStep ? 'done' : i === wizardStep ? 'active' : '');
+    const d = document.getElementById('dot-' + i);
+    if (d) d.className = 'step-dot ' + (i < wizardStep ? 'done' : i === wizardStep ? 'active' : '');
   }
-  document.getElementById('step-label').textContent = (wizardStep + 1) + ' / ' + TOTAL_STEPS;
-  const titles = ['Restaurante','Comensales','Entrantes','Principales','Postres','Ajustes'];
-  document.getElementById('wizard-title').textContent = titles[wizardStep] || 'Nueva visita';
+  document.getElementById('step-label').textContent = (wizardStep+1) + ' / ' + TOTAL_STEPS;
+  document.getElementById('wizard-title').textContent = ['Restaurante','Comensales','Entrantes','Principales','Postres','Ajustes'][wizardStep] || '';
+  const back = document.getElementById('wizard-back-btn');
+  const next = document.getElementById('wizard-next-btn');
+  back.style.display = wizardStep > 0 ? 'block' : 'none';
+  back.style.flex = '1';
+  next.style.flex = wizardStep > 0 ? '2' : '1';
+  next.textContent = wizardStep === TOTAL_STEPS - 1 ? '💾 Guardar' : 'Siguiente →';
 }
 
 function renderWizardStep() {
-  updateStepIndicator();
-  const content = document.getElementById('wizard-content');
-  const nextBtn = document.getElementById('wizard-next-btn');
-
-  switch (wizardStep) {
-    case 0: renderStep0(content, nextBtn); break;
-    case 1: renderStep1(content, nextBtn); break;
-    case 2: renderStep2(content, nextBtn); break;
-    case 3: renderStep3(content, nextBtn); break;
-    case 4: renderStep4(content, nextBtn); break;
-    case 5: renderStep5(content, nextBtn); break;
-  }
+  updateStepUI();
+  const el = document.getElementById('wizard-content');
+  [renderStep0, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5][wizardStep](el);
+  el.scrollTop = 0;
 }
 
-// STEP 0: Info restaurante
-function renderStep0(el, btn) {
-  btn.textContent = 'Siguiente →';
-  el.innerHTML = `
-    <div class="card">
-      <div class="card-title">Información</div>
-      <div class="field">
-        <label>Nombre del restaurante *</label>
-        <input type="text" id="s0-name" placeholder="Ej: La Pepita" value="${wizardData.restaurantName}">
-      </div>
-      <div class="field">
-        <label>Categoría *</label>
-        <select id="s0-cat">
-          <option value="">Selecciona categoría</option>
-          ${CATEGORIES.map(c => `<option value="${c}" ${wizardData.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field">
-        <label>¿Quién ha elegido el restaurante?</label>
-        <select id="s0-chooser">
-          <option value="">Sin especificar</option>
-          ${people.map(p => `<option value="${p.id}" ${wizardData.chooserId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
-        </select>
-      </div>
-    </div>`;
-}
-
-// STEP 1: Comensales
-function renderStep1(el, btn) {
-  btn.textContent = 'Siguiente →';
-  el.innerHTML = `
-    <div class="card">
-      <div class="card-title">¿Quién está en la mesa?</div>
-      <p class="text-muted mt-8" style="margin-bottom:14px;">Selecciona todos los comensales</p>
-      <div class="chips" id="s1-chips">
-        ${people.map(p => `<div class="chip ${wizardData.diners.includes(p.id) ? 'selected' : ''}" onclick="toggleDiner('${p.id}',this)">${p.name}</div>`).join('')}
-      </div>
+function renderStep0(el) {
+  el.innerHTML = `<div class="card">
+    <div class="card-title">Información del restaurante</div>
+    <div class="field"><label>Nombre *</label><input type="text" id="s0-name" placeholder="Ej: La Pepita" value="${esc(wizardData.restaurantName)}"></div>
+    <div class="field"><label>Categoría *</label>
+      <select id="s0-cat">
+        <option value="">Selecciona categoría</option>
+        ${CATEGORIES.map(c=>`<option value="${c}"${wizardData.category===c?' selected':''}>${c}</option>`).join('')}
+      </select>
     </div>
-    <div class="card" style="margin-top:8px;">
-      <div style="font-size:13px;color:var(--text2);">Seleccionados: <span id="diner-count" style="color:var(--accent);font-weight:700;">${wizardData.diners.length}</span></div>
-    </div>`;
+    <div class="field"><label>¿Quién eligió el restaurante?</label>
+      <select id="s0-chooser">
+        <option value="">Sin especificar</option>
+        ${[...people].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}"${wizardData.chooserId===p.id?' selected':''}>${p.name}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+}
+
+function renderStep1(el) {
+  el.innerHTML = `<div class="card">
+    <div class="card-title">¿Quién está en la mesa?</div>
+    <p class="text-muted" style="margin-bottom:14px;">Selecciona todos los comensales</p>
+    <div class="chips">
+      ${[...people].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<div class="chip${wizardData.diners.includes(p.id)?' selected':''}" onclick="toggleDiner('${p.id}',this)">${p.name}</div>`).join('')}
+    </div>
+  </div>
+  <div class="card"><div style="font-size:13px;color:var(--text2);">Seleccionados: <span id="diner-count" style="color:var(--accent);font-weight:700;">${wizardData.diners.length}</span></div></div>`;
 }
 
 function toggleDiner(id, el) {
-  if (wizardData.diners.includes(id)) {
-    wizardData.diners = wizardData.diners.filter(d => d !== id);
-    el.classList.remove('selected');
-  } else {
-    wizardData.diners.push(id);
-    el.classList.add('selected');
-  }
-  document.getElementById('diner-count').textContent = wizardData.diners.length;
+  wizardData.diners.includes(id) ? (wizardData.diners = wizardData.diners.filter(d=>d!==id), el.classList.remove('selected')) : (wizardData.diners.push(id), el.classList.add('selected'));
+  const c = document.getElementById('diner-count'); if(c) c.textContent = wizardData.diners.length;
 }
 
-// STEP 2: Entrantes
-function renderStep2(el, btn) {
-  btn.textContent = 'Siguiente →';
-  // Init starters if needed
-  while (wizardData.starters.length < wizardData.starterCount) {
-    wizardData.starters.push({ id: crypto.randomUUID(), name: 'Entrante ' + (wizardData.starters.length + 1), scores: {} });
-  }
-  wizardData.starters = wizardData.starters.slice(0, wizardData.starterCount);
+function renderStep2(el) {
+  syncPlates('starters', wizardData.starterCount, 'Entrante', null);
+  el.innerHTML = `<div class="card"><div class="card-title">Número de entrantes</div>
+    <div class="stepper"><button onclick="changeCount('starter',-1)">−</button><span>${wizardData.starterCount}</span><button onclick="changeCount('starter',1)">+</button></div>
+  </div>${wizardData.starters.map((p,i)=>plateCard(p,i,'starters',getDiners())).join('')}`;
+}
 
-  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
-
-  el.innerHTML = `
-    <div class="card">
-      <div class="section-header">
-        <div class="section-title">Número de entrantes</div>
-      </div>
-      <div class="stepper">
-        <button onclick="changeCount('starter',-1)">−</button>
-        <span id="starter-count-val">${wizardData.starterCount}</span>
-        <button onclick="changeCount('starter',1)">+</button>
-      </div>
+function renderStep3(el) {
+  const diners = getDiners();
+  syncPlates('mains', wizardData.mainShared ? wizardData.mainCount : diners.length, wizardData.mainShared ? 'Principal' : null, diners);
+  el.innerHTML = `<div class="card"><div class="card-title">Tipo de principales</div>
+    <div class="toggle-group">
+      <button class="toggle-opt${!wizardData.mainShared?' active':''}" onclick="setMainMode(false)">Individuales</button>
+      <button class="toggle-opt${wizardData.mainShared?' active':''}" onclick="setMainMode(true)">Compartidos</button>
     </div>
-    ${wizardData.starters.map((plate, pi) => `
-    <div class="card" id="starter-card-${pi}">
-      <div class="section-header">
-        <input type="text" value="${plate.name}" style="background:transparent;border:none;font-size:15px;font-weight:600;color:var(--text);padding:0;width:auto;flex:1;" onchange="wizardData.starters[${pi}].name=this.value">
-      </div>
-      <hr class="score-divider">
-      ${dinersInfo.map(p => `
-      <div class="score-row">
-        <div class="score-label">${p.name}</div>
-        <div class="score-slider-wrap">
-          <input type="range" min="0" max="10" step="0.5" value="${plate.scores[p.id] ?? 5}"
-            oninput="wizardData.starters[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
-          <div class="score-val">${(plate.scores[p.id] ?? 5).toFixed(1)}</div>
-        </div>
-      </div>`).join('')}
-    </div>`).join('')}`;
+    ${wizardData.mainShared?`<div class="stepper mt-12"><button onclick="changeCount('main',-1)">−</button><span>${wizardData.mainCount}</span><button onclick="changeCount('main',1)">+</button></div>`:''}
+  </div>${wizardData.mains.map((p,i)=>plateCard(p,i,'mains', wizardData.mainShared ? diners : (diners[i]?[diners[i]]:[] ))).join('')}`;
 }
 
-// STEP 3: Principales
-function renderStep3(el, btn) {
-  btn.textContent = 'Siguiente →';
-  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+function setMainMode(shared) { wizardData.mainShared=shared; wizardData.mains=[]; renderWizardStep(); }
 
-  // Ensure mains
-  const targetCount = wizardData.mainShared ? wizardData.mainCount : wizardData.diners.length;
-  while (wizardData.mains.length < targetCount) {
-    wizardData.mains.push({ id: crypto.randomUUID(), name: wizardData.mainShared ? 'Principal ' + (wizardData.mains.length + 1) : 'Principal de ' + (dinersInfo[wizardData.mains.length]?.name || ''), scores: {} });
-  }
-  wizardData.mains = wizardData.mains.slice(0, targetCount);
-
-  el.innerHTML = `
-    <div class="card">
-      <div class="card-title">Tipo de principales</div>
-      <div class="toggle-group">
-        <button class="toggle-opt ${!wizardData.mainShared ? 'active' : ''}" onclick="setMainMode(false)">Individuales</button>
-        <button class="toggle-opt ${wizardData.mainShared ? 'active' : ''}" onclick="setMainMode(true)">Compartidos</button>
-      </div>
-      ${wizardData.mainShared ? `<div class="stepper mt-12">
-        <button onclick="changeCount('main',-1)">−</button>
-        <span id="main-count-val">${wizardData.mainCount}</span>
-        <button onclick="changeCount('main',1)">+</button>
-      </div>` : ''}
-    </div>
-    ${wizardData.mains.map((plate, pi) => {
-      const assignedDiner = !wizardData.mainShared ? dinersInfo[pi] : null;
-      return `<div class="card" id="main-card-${pi}">
-        <div class="section-header">
-          <input type="text" value="${plate.name}" style="background:transparent;border:none;font-size:15px;font-weight:600;color:var(--text);padding:0;width:100%;" onchange="wizardData.mains[${pi}].name=this.value">
-        </div>
-        <hr class="score-divider">
-        ${wizardData.mainShared
-          ? dinersInfo.map(p => `<div class="score-row">
-              <div class="score-label">${p.name}</div>
-              <div class="score-slider-wrap">
-                <input type="range" min="0" max="10" step="0.5" value="${plate.scores[p.id] ?? 5}"
-                  oninput="wizardData.mains[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
-                <div class="score-val">${(plate.scores[p.id] ?? 5).toFixed(1)}</div>
-              </div>
-            </div>`).join('')
-          : assignedDiner ? `<div class="score-row">
-              <div class="score-label">${assignedDiner.name}</div>
-              <div class="score-slider-wrap">
-                <input type="range" min="0" max="10" step="0.5" value="${plate.scores[assignedDiner.id] ?? 5}"
-                  oninput="wizardData.mains[${pi}].scores['${assignedDiner.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
-                <div class="score-val">${(plate.scores[assignedDiner.id] ?? 5).toFixed(1)}</div>
-              </div>
-            </div>` : ''}
-      </div>`;
-    }).join('')}`;
-}
-
-function setMainMode(shared) {
-  wizardData.mainShared = shared;
-  wizardData.mains = [];
-  if (shared) wizardData.mainCount = 2;
-  renderWizardStep();
-}
-
-// STEP 4: Postres
-function renderStep4(el, btn) {
-  btn.textContent = 'Siguiente →';
-  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
-
+function renderStep4(el) {
   if (!wizardData.hasDessert) {
-    el.innerHTML = `
-      <div class="card">
-        <div class="card-title">Postres</div>
-        <div class="toggle-group">
-          <button class="toggle-opt active" onclick="setDessert(true)">Con postres</button>
-          <button class="toggle-opt" onclick="setDessert(false)">Sin postres</button>
-        </div>
-        <p class="text-muted mt-12">Sin postres: pesos redistribuidos (33% entrantes / 67% principal)</p>
-      </div>`;
+    el.innerHTML = `<div class="card"><div class="card-title">Postres</div>
+      <div class="toggle-group">
+        <button class="toggle-opt" onclick="setDessert(true)">Con postres</button>
+        <button class="toggle-opt active" onclick="setDessert(false)">Sin postres</button>
+      </div>
+      <p class="text-muted mt-12">Pesos redistribuidos: 33% entrantes / 67% principales</p>
+    </div>`;
     return;
   }
-
-  while (wizardData.desserts.length < wizardData.dessertCount) {
-    wizardData.desserts.push({ id: crypto.randomUUID(), name: 'Postre ' + (wizardData.desserts.length + 1), scores: {} });
-  }
-  wizardData.desserts = wizardData.desserts.slice(0, wizardData.dessertCount);
-
-  el.innerHTML = `
-    <div class="card">
-      <div class="card-title">Postres</div>
-      <div class="toggle-group">
-        <button class="toggle-opt active" onclick="setDessert(true)">Con postres</button>
-        <button class="toggle-opt" onclick="setDessert(false)">Sin postres</button>
-      </div>
-      <div class="stepper mt-12">
-        <button onclick="changeCount('dessert',-1)">−</button>
-        <span id="dessert-count-val">${wizardData.dessertCount}</span>
-        <button onclick="changeCount('dessert',1)">+</button>
-      </div>
+  syncPlates('desserts', wizardData.dessertCount, 'Postre', null);
+  el.innerHTML = `<div class="card"><div class="card-title">Postres</div>
+    <div class="toggle-group">
+      <button class="toggle-opt active" onclick="setDessert(true)">Con postres</button>
+      <button class="toggle-opt" onclick="setDessert(false)">Sin postres</button>
     </div>
-    ${wizardData.desserts.map((plate, pi) => `
-    <div class="card" id="dessert-card-${pi}">
-      <div class="section-header">
-        <input type="text" value="${plate.name}" style="background:transparent;border:none;font-size:15px;font-weight:600;color:var(--text);padding:0;width:100%;" onchange="wizardData.desserts[${pi}].name=this.value">
-      </div>
-      <hr class="score-divider">
-      ${dinersInfo.map(p => `
-      <div class="score-row">
-        <div class="score-label">${p.name}</div>
-        <div class="score-slider-wrap">
-          <input type="range" min="0" max="10" step="0.5" value="${plate.scores[p.id] ?? 5}"
-            oninput="wizardData.desserts[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
-          <div class="score-val">${(plate.scores[p.id] ?? 5).toFixed(1)}</div>
-        </div>
-      </div>`).join('')}
-    </div>`).join('')}`;
+    <div class="stepper mt-12"><button onclick="changeCount('dessert',-1)">−</button><span>${wizardData.dessertCount}</span><button onclick="changeCount('dessert',1)">+</button></div>
+  </div>${wizardData.desserts.map((p,i)=>plateCard(p,i,'desserts',getDiners())).join('')}`;
 }
 
-function setDessert(has) {
-  wizardData.hasDessert = has;
-  if (!has) wizardData.desserts = [];
+function setDessert(has) { wizardData.hasDessert=has; if(!has) wizardData.desserts=[]; renderWizardStep(); }
+
+function renderStep5(el) {
+  const diners = getDiners();
+  diners.forEach(p=>{ if(!wizardData.adjustments[p.id]) wizardData.adjustments[p.id]={service:0,price:0}; });
+  el.innerHTML = `
+  <div class="card"><div class="card-title">Servicio (± 0.75 pts)</div>
+    ${diners.map(p=>`<div class="score-row">
+      <div class="score-label">${p.name}</div>
+      <div class="score-slider-wrap">
+        <input type="range" min="-0.75" max="0.75" step="0.05" value="${wizardData.adjustments[p.id]?.service??0}"
+          oninput="wizardData.adjustments['${p.id}'].service=parseFloat(this.value);updAdj('sv-${p.id}',this.value)">
+        <div class="score-val ${adjCls(wizardData.adjustments[p.id]?.service??0)}" id="sv-${p.id}">${adjFmt(wizardData.adjustments[p.id]?.service??0)}</div>
+      </div></div>`).join('')}
+  </div>
+  <div class="card"><div class="card-title">Precio (± 1.5 pts)</div>
+    ${diners.map(p=>`<div class="score-row">
+      <div class="score-label">${p.name}</div>
+      <div class="score-slider-wrap">
+        <input type="range" min="-1.5" max="1.5" step="0.05" value="${wizardData.adjustments[p.id]?.price??0}"
+          oninput="wizardData.adjustments['${p.id}'].price=parseFloat(this.value);updAdj('pr-${p.id}',this.value)">
+        <div class="score-val ${adjCls(wizardData.adjustments[p.id]?.price??0)}" id="pr-${p.id}">${adjFmt(wizardData.adjustments[p.id]?.price??0)}</div>
+      </div></div>`).join('')}
+  </div>
+  <div class="card"><div class="card-title">Detalles adicionales</div>
+    <div class="field"><label>Precio por persona (€)</label><input type="number" id="s5-price" placeholder="Ej: 25" min="0" value="${wizardData.pricePerPerson||''}"></div>
+    <div class="field"><label>Nota rápida</label><textarea id="s5-note" placeholder="Lo que más destacó...">${esc(wizardData.note||'')}</textarea></div>
+  </div>`;
+}
+
+// ─── PLATE CARD ───
+function plateCard(plate, pi, store, diners) {
+  // Initialize all diner scores to DEFAULT if not set — THIS IS THE FIX
+  diners.forEach(p => { if (plate.scores[p.id] === undefined) plate.scores[p.id] = DEFAULT_SCORE; });
+  return `<div class="card">
+    <input type="text" value="${esc(plate.name)}" style="background:transparent;border:none;border-bottom:0.5px solid var(--border);font-size:15px;font-weight:600;color:var(--text);padding:0 0 8px;width:100%;margin-bottom:8px;outline:none;font-family:inherit;" onchange="wizardData.${store}[${pi}].name=this.value">
+    ${diners.map(p=>{
+      const val = parseFloat(plate.scores[p.id]);
+      return `<div class="score-row">
+        <div class="score-label">${p.name}</div>
+        <div class="score-slider-wrap">
+          <input type="range" min="0" max="10" step="${STEP}" value="${val}"
+            oninput="wizardData.${store}[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)">
+          <div class="score-val">${val.toFixed(2)}</div>
+        </div></div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ─── HELPERS ───
+function syncPlates(store, count, prefix, diners) {
+  while (wizardData[store].length < count) {
+    const i = wizardData[store].length;
+    const name = prefix ? (prefix + ' ' + (i+1)) : (diners && diners[i] ? 'Principal de ' + diners[i].name : 'Principal ' + (i+1));
+    wizardData[store].push({ id: crypto.randomUUID(), name, scores:{} });
+  }
+  wizardData[store] = wizardData[store].slice(0, count);
+}
+function getDiners() { return wizardData.diners.map(id=>people.find(p=>p.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name)); }
+function changeCount(t, d) {
+  if(t==='starter'){wizardData.starterCount=Math.max(1,wizardData.starterCount+d);wizardData.starters=[];}
+  else if(t==='main'){wizardData.mainCount=Math.max(1,wizardData.mainCount+d);wizardData.mains=[];}
+  else if(t==='dessert'){wizardData.dessertCount=Math.max(1,wizardData.dessertCount+d);wizardData.desserts=[];}
   renderWizardStep();
 }
+function adjFmt(v) { v=parseFloat(v); return v>0?'+'+v.toFixed(2):v<0?v.toFixed(2):'0.00'; }
+function adjCls(v) { v=parseFloat(v); return v>0?'adj-positive':v<0?'adj-negative':'adj-zero'; }
+function updAdj(id, val) { const e=document.getElementById(id); if(e){e.textContent=adjFmt(val);e.className='score-val '+adjCls(val);} }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showToast(msg) { const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500); }
 
-// STEP 5: Ajustes finales
-function renderStep5(el, btn) {
-  btn.textContent = '💾 Guardar visita';
-  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
-
-  // Init adjustments
-  dinersInfo.forEach(p => {
-    if (!wizardData.adjustments[p.id]) wizardData.adjustments[p.id] = { service: 0, price: 0 };
-  });
-
-  el.innerHTML = `
-    <div class="card">
-      <div class="card-title">Servicio (± 0.75 pts)</div>
-      ${dinersInfo.map(p => `
-      <div class="score-row">
-        <div class="score-label">${p.name}</div>
-        <div class="score-slider-wrap">
-          <input type="range" min="-0.75" max="0.75" step="0.25" value="${wizardData.adjustments[p.id]?.service ?? 0}"
-            oninput="wizardData.adjustments['${p.id}'].service=parseFloat(this.value);updateAdjDisplay('svc-${p.id}',this.value)">
-          <div class="score-val" id="svc-${p.id}">${adjDisplay(wizardData.adjustments[p.id]?.service ?? 0)}</div>
-        </div>
-      </div>`).join('')}
-    </div>
-    <div class="card">
-      <div class="card-title">Precio (± 1.5 pts)</div>
-      ${dinersInfo.map(p => `
-      <div class="score-row">
-        <div class="score-label">${p.name}</div>
-        <div class="score-slider-wrap">
-          <input type="range" min="-1.5" max="1.5" step="0.5" value="${wizardData.adjustments[p.id]?.price ?? 0}"
-            oninput="wizardData.adjustments['${p.id}'].price=parseFloat(this.value);updateAdjDisplay('prc-${p.id}',this.value)">
-          <div class="score-val" id="prc-${p.id}">${adjDisplay(wizardData.adjustments[p.id]?.price ?? 0)}</div>
-        </div>
-      </div>`).join('')}
-    </div>
-    <div class="card">
-      <div class="card-title">Detalles adicionales</div>
-      <div class="field">
-        <label>Precio por persona (€)</label>
-        <input type="number" id="s5-price" placeholder="Ej: 25" min="0" value="${wizardData.pricePerPerson || ''}">
-      </div>
-      <div class="field">
-        <label>Nota rápida</label>
-        <textarea id="s5-note" placeholder="Lo que más destacó de la visita...">${wizardData.note || ''}</textarea>
-      </div>
-    </div>`;
-}
-
-function adjDisplay(val) {
-  const v = parseFloat(val);
-  if (v > 0) return '+' + v.toFixed(2);
-  if (v < 0) return v.toFixed(2);
-  return '0.00';
-}
-
-function updateAdjDisplay(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = adjDisplay(val);
-}
-
-function changeCount(type, delta) {
-  if (type === 'starter') {
-    wizardData.starterCount = Math.max(1, wizardData.starterCount + delta);
-    wizardData.starters = [];
-    renderWizardStep();
-  } else if (type === 'main') {
-    wizardData.mainCount = Math.max(1, wizardData.mainCount + delta);
-    wizardData.mains = [];
-    renderWizardStep();
-  } else if (type === 'dessert') {
-    wizardData.dessertCount = Math.max(1, wizardData.dessertCount + delta);
-    wizardData.desserts = [];
-    renderWizardStep();
-  }
-}
+function wizardBack() { if(wizardStep>0){wizardStep--;renderWizardStep();} }
 
 async function wizardNext() {
-  // Validation and data collection per step
-  if (wizardStep === 0) {
-    const name = document.getElementById('s0-name')?.value.trim();
-    const cat = document.getElementById('s0-cat')?.value;
-    if (!name) { showFieldError('s0-name', 'Introduce el nombre del restaurante'); return; }
-    if (!cat) { showFieldError('s0-cat', 'Selecciona una categoría'); return; }
-    wizardData.restaurantName = name;
-    wizardData.category = cat;
-    wizardData.chooserId = document.getElementById('s0-chooser')?.value || null;
+  if (wizardStep===0) {
+    const name=document.getElementById('s0-name')?.value.trim();
+    const cat=document.getElementById('s0-cat')?.value;
+    if(!name){showToast('Introduce el nombre del restaurante');return;}
+    if(!cat){showToast('Selecciona una categoría');return;}
+    wizardData.restaurantName=name; wizardData.category=cat;
+    wizardData.chooserId=document.getElementById('s0-chooser')?.value||null;
   }
-
-  if (wizardStep === 1) {
-    if (wizardData.diners.length === 0) { showToast('Selecciona al menos un comensal'); return; }
-  }
-
-  if (wizardStep === 5) {
-    // Save
-    const priceVal = document.getElementById('s5-price')?.value;
-    wizardData.pricePerPerson = priceVal ? parseFloat(priceVal) : null;
-    wizardData.note = document.getElementById('s5-note')?.value.trim() || '';
-
+  if (wizardStep===1 && wizardData.diners.length===0) { showToast('Selecciona al menos un comensal'); return; }
+  if (wizardStep===TOTAL_STEPS-1) {
+    wizardData.pricePerPerson=parseFloat(document.getElementById('s5-price')?.value)||null;
+    wizardData.note=document.getElementById('s5-note')?.value.trim()||'';
     await DB.put('visits', wizardData);
-    visits = await DB.getAll('visits');
-    renderHome();
+    visits=await DB.getAll('visits');
     goScreen('home');
     showResult(wizardData);
     return;
   }
-
-  wizardStep++;
-  renderWizardStep();
+  wizardStep++; renderWizardStep();
 }
 
-// ═══════════════════════════════════════════
-// RESULT SUMMARY
-// ═══════════════════════════════════════════
+// ═══════════════════════════ DETAIL ═══════════════════════════
 function showResult(visit) {
-  const score = calcFinalScore(visit);
-  const modal = document.getElementById('detail-modal');
-  const content = document.getElementById('detail-content');
-  content.innerHTML = buildDetailHTML(visit, score, true);
-  modal.classList.add('open');
+  document.getElementById('detail-content').innerHTML = buildDetail(visit, true);
+  document.getElementById('detail-modal').classList.add('open');
 }
-
-function buildDetailHTML(visit, score, isNew) {
-  const chooser = people.find(p => p.id === visit.chooserId);
-  const dateStr = new Date(visit.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-  const dinersInfo = visit.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
-
-  // Breakdown scores
-  let starterAvg = 0, mainAvg = 0, dessertAvg = 0;
-  if (visit.starters?.length) {
-    const plateScores = visit.starters.map(p => { const s = Object.values(p.scores).map(Number).filter(n=>!isNaN(n)); return s.length ? s.reduce((a,b)=>a+b,0)/s.length : 0; });
-    starterAvg = plateScores.reduce((a,b)=>a+b,0)/plateScores.length;
-  }
-  if (visit.mains?.length) {
-    const plateScores = visit.mains.map(p => { const s = Object.values(p.scores).map(Number).filter(n=>!isNaN(n)); return s.length ? s.reduce((a,b)=>a+b,0)/s.length : 0; });
-    mainAvg = plateScores.reduce((a,b)=>a+b,0)/plateScores.length;
-  }
-  if (visit.desserts?.length) {
-    const plateScores = visit.desserts.map(p => { const s = Object.values(p.scores).map(Number).filter(n=>!isNaN(n)); return s.length ? s.reduce((a,b)=>a+b,0)/s.length : 0; });
-    dessertAvg = plateScores.reduce((a,b)=>a+b,0)/plateScores.length;
-  }
-
-  return `
-    <h3>${isNew ? '✅ Visita guardada' : visit.restaurantName}</h3>
-    <div class="result-score">
-      <div class="result-big">${score.toFixed(2)}</div>
-      <div class="result-label">${visit.restaurantName} · ${visit.category}</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:4px;">${dateStr} · ${dinersInfo.length} comensales</div>
-    </div>
-    <div class="result-grid">
-      <div class="result-mini">
-        <div class="result-mini-val">${starterAvg.toFixed(1)}</div>
-        <div class="result-mini-lbl">Entrantes</div>
-      </div>
-      <div class="result-mini">
-        <div class="result-mini-val">${mainAvg.toFixed(1)}</div>
-        <div class="result-mini-lbl">Principales</div>
-      </div>
-      <div class="result-mini">
-        <div class="result-mini-val">${visit.desserts?.length ? dessertAvg.toFixed(1) : '—'}</div>
-        <div class="result-mini-lbl">Postres</div>
-      </div>
-    </div>
-    ${chooser ? `<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">Eligió: <span style="color:var(--text2)">${chooser.name}</span></div>` : ''}
-    ${visit.pricePerPerson ? `<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">Precio/persona: <span style="color:var(--accent)">€${visit.pricePerPerson}</span></div>` : ''}
-    ${visit.note ? `<div style="background:var(--bg3);border-radius:var(--r2);padding:12px;font-size:13px;color:var(--text2);margin-bottom:12px;">💬 "${visit.note}"</div>` : ''}
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button class="btn btn-secondary" style="flex:1;" onclick="closeDetail()">Cerrar</button>
-      ${!isNew ? `<button class="btn btn-danger btn-sm" style="flex:0.5;" onclick="deleteVisit('${visit.id}')">Borrar</button>` : ''}
-    </div>`;
-}
-
 function showDetail(id) {
-  const visit = visits.find(v => v.id === id);
-  if (!visit) return;
-  const score = calcFinalScore(visit);
-  const modal = document.getElementById('detail-modal');
-  const content = document.getElementById('detail-content');
-  content.innerHTML = buildDetailHTML(visit, score, false);
-  modal.classList.add('open');
+  const v=visits.find(v=>v.id===id); if(!v) return;
+  document.getElementById('detail-content').innerHTML = buildDetail(v, false);
+  document.getElementById('detail-modal').classList.add('open');
 }
 
-function closeDetail(e) {
-  if (!e || e.target === document.getElementById('detail-modal')) {
-    document.getElementById('detail-modal').classList.remove('open');
-  }
+function buildDetail(visit, isNew) {
+  const bd=calcBreakdown(visit);
+  const chooser=people.find(p=>p.id===visit.chooserId);
+  const dateStr=new Date(visit.date).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
+  const diners=visit.diners.map(id=>people.find(p=>p.id===id)).filter(Boolean);
+  const sc=scoreColor(bd.final);
+  return `<h3>${isNew?'✅ Visita guardada':esc(visit.restaurantName)}</h3>
+  <div class="result-score">
+    <div class="result-big" style="color:${sc}">${bd.final.toFixed(2)}</div>
+    <div class="result-label" style="font-weight:600;color:var(--text);font-size:15px;">${esc(visit.restaurantName)}</div>
+    <div class="result-label">${visit.category} · ${dateStr}</div>
+    <div class="result-label">${diners.length} comensal${diners.length!==1?'es':''}</div>
+  </div>
+  <div class="result-grid">
+    <div class="result-mini"><div class="result-mini-val">${bd.sScore.toFixed(2)}</div><div class="result-mini-lbl">Entrantes</div></div>
+    <div class="result-mini"><div class="result-mini-val">${bd.mScore.toFixed(2)}</div><div class="result-mini-lbl">Principales</div></div>
+    <div class="result-mini"><div class="result-mini-val">${bd.hasDessert?bd.dScore.toFixed(2):'—'}</div><div class="result-mini-lbl">Postres</div></div>
+  </div>
+  <div class="result-grid">
+    <div class="result-mini"><div class="result-mini-val ${adjCls(bd.adjSvc)}">${adjFmt(bd.adjSvc)}</div><div class="result-mini-lbl">Δ Servicio</div></div>
+    <div class="result-mini"><div class="result-mini-val ${adjCls(bd.adjPrc)}">${adjFmt(bd.adjPrc)}</div><div class="result-mini-lbl">Δ Precio</div></div>
+    <div class="result-mini"><div class="result-mini-val" style="font-size:13px;color:var(--text2);">${bd.base.toFixed(2)}</div><div class="result-mini-lbl">Base</div></div>
+  </div>
+  ${chooser?`<div style="font-size:13px;color:var(--text3);margin:8px 0;">Eligió: <span style="color:var(--text2);font-weight:600;">${chooser.name}</span></div>`:''}
+  ${visit.pricePerPerson?`<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">Precio/persona: <span style="color:var(--accent);font-weight:600;">€${visit.pricePerPerson}</span></div>`:''}
+  ${visit.note?`<div style="background:var(--bg2);border-radius:var(--r2);padding:12px;font-size:13px;color:var(--text2);margin-bottom:12px;border-left:3px solid var(--accent);">💬 ${esc(visit.note)}</div>`:''}
+  <div style="display:flex;gap:8px;margin-top:12px;">
+    <button class="btn btn-secondary" style="flex:1;" onclick="closeDetail()">Cerrar</button>
+    ${!isNew?`<button class="btn btn-danger" style="flex:0.6;padding:14px 10px;font-size:13px;" onclick="deleteVisit('${visit.id}')">Borrar</button>`:''}
+  </div>`;
 }
 
+function closeDetail(e) { if(!e||e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open'); }
 async function deleteVisit(id) {
-  if (!confirm('¿Borrar esta visita?')) return;
-  await DB.delete('visits', id);
-  visits = await DB.getAll('visits');
-  closeDetail();
-  renderHome();
+  if(!confirm('¿Borrar esta visita?')) return;
+  await DB.delete('visits',id); visits=await DB.getAll('visits');
+  closeDetail(); renderHome();
 }
 
-// ═══════════════════════════════════════════
-// RANKING
-// ═══════════════════════════════════════════
-let activeTab = 'global';
+// ═══════════════════════════ RANKING ═══════════════════════════
 function switchTab(tab) {
-  activeTab = tab;
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    t.classList.toggle('active', ['global','category','chooser'][i] === tab);
-  });
-  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['global','category','chooser'][i]===tab));
+  document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
   renderRanking();
 }
-
-function renderRanking() {
-  renderTabGlobal();
-  renderTabCategory();
-  renderTabChooser();
-}
-
-function rankNumClass(i) {
-  if (i === 0) return 'gold'; if (i === 1) return 'silver'; if (i === 2) return 'bronze'; return '';
-}
+function renderRanking() { renderTabGlobal(); renderTabCategory(); renderTabChooser(); }
+function rnc(i){return i===0?'gold':i===1?'silver':i===2?'bronze':'';}
 
 function renderTabGlobal() {
-  const el = document.getElementById('tab-global');
-  if (visits.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><p>Sin datos todavía</p></div>'; return; }
-
-  const scored = visits.map(v => ({ ...v, score: calcFinalScore(v) })).sort((a, b) => b.score - a.score);
-  el.innerHTML = '<div class="card" style="margin-top:4px;">' + scored.map((v, i) => {
-    const dinersInfo = v.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
-    return `<div class="rank-item" onclick="showDetail('${v.id}')" style="cursor:pointer;">
-      <div class="rank-num ${rankNumClass(i)}">${i + 1}</div>
-      <div class="rank-info">
-        <div class="rank-name">${v.restaurantName}</div>
-        <div class="rank-sub">${v.category} · ${dinersInfo.length} comensal${dinersInfo.length !== 1 ? 'es' : ''}</div>
-      </div>
-      <div style="text-align:right;">
-        <div class="rank-score">${v.score.toFixed(2)}</div>
-        <div class="rank-score-sm">/ 10</div>
-      </div>
+  const el=document.getElementById('tab-global');
+  if(!visits.length){el.innerHTML='<div class="empty"><div class="empty-icon">🏆</div><p>Sin datos todavía</p></div>';return;}
+  const scored=[...visits].map(v=>({...v,score:calcFinalScore(v)})).sort((a,b)=>b.score-a.score);
+  el.innerHTML='<div class="card">'+scored.map((v,i)=>{
+    const sc=scoreColor(v.score);
+    const d=v.diners.map(id=>people.find(p=>p.id===id)).filter(Boolean);
+    return `<div class="rank-item" onclick="showDetail('${v.id}')">
+      <div class="rank-num ${rnc(i)}">${i+1}</div>
+      <div class="rank-info"><div class="rank-name">${esc(v.restaurantName)}</div><div class="rank-sub">${v.category} · ${d.length} comensales</div></div>
+      <div style="text-align:right;"><div class="rank-score" style="color:${sc}">${v.score.toFixed(2)}</div><div style="font-size:10px;color:var(--text3);">/ 10</div></div>
     </div>`;
-  }).join('') + '</div>';
+  }).join('')+'</div>';
 }
 
 function renderTabCategory() {
-  const el = document.getElementById('tab-category');
-  if (visits.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">🍕</div><p>Sin datos todavía</p></div>'; return; }
-
-  const byCat = {};
-  visits.forEach(v => {
-    if (!byCat[v.category]) byCat[v.category] = [];
-    byCat[v.category].push({ ...v, score: calcFinalScore(v) });
-  });
-
-  let html = '';
-  Object.entries(byCat).sort(([,a],[,b]) => {
-    const avgA = a.reduce((s,v)=>s+v.score,0)/a.length;
-    const avgB = b.reduce((s,v)=>s+v.score,0)/b.length;
-    return avgB - avgA;
-  }).forEach(([cat, catVisits]) => {
-    const sorted = catVisits.sort((a, b) => b.score - a.score);
-    const avg = sorted.reduce((s, v) => s + v.score, 0) / sorted.length;
-    html += `<div style="margin-bottom:8px;">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:12px 4px 6px;">
-        ${cat} <span style="color:var(--accent)">· avg ${avg.toFixed(2)}</span>
-      </div>
-      <div class="card" style="padding:8px 16px;">
-        ${sorted.map((v, i) => {
-          const dinersInfo = v.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
-          return `<div class="rank-item" onclick="showDetail('${v.id}')" style="cursor:pointer;">
-            <div class="rank-num ${rankNumClass(i)}">${i + 1}</div>
-            <div class="rank-info">
-              <div class="rank-name">${v.restaurantName}</div>
-              <div class="rank-sub">${dinersInfo.length} comensales</div>
-            </div>
-            <div class="rank-score" style="font-size:17px;">${v.score.toFixed(2)}</div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  });
-  el.innerHTML = html;
+  const el=document.getElementById('tab-category');
+  if(!visits.length){el.innerHTML='<div class="empty"><div class="empty-icon">🍕</div><p>Sin datos todavía</p></div>';return;}
+  const byCat={};
+  visits.forEach(v=>{if(!byCat[v.category])byCat[v.category]=[];byCat[v.category].push({...v,score:calcFinalScore(v)});});
+  el.innerHTML=Object.entries(byCat).sort(([a],[b])=>a.localeCompare(b)).map(([cat,cvs])=>{
+    const sorted=cvs.sort((a,b)=>b.score-a.score);
+    const avg=sorted.reduce((s,v)=>s+v.score,0)/sorted.length;
+    return `<div style="margin-bottom:8px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:12px 4px 6px;">${cat} <span style="color:var(--accent);font-weight:700;">· avg ${avg.toFixed(2)}</span></div>
+      <div class="card" style="padding:8px 16px;">${sorted.map((v,i)=>{
+        const d=v.diners.map(id=>people.find(p=>p.id===id)).filter(Boolean);
+        return `<div class="rank-item" onclick="showDetail('${v.id}')">
+          <div class="rank-num ${rnc(i)}">${i+1}</div>
+          <div class="rank-info"><div class="rank-name">${esc(v.restaurantName)}</div><div class="rank-sub">${d.length} comensales</div></div>
+          <div class="rank-score" style="font-size:17px;">${v.score.toFixed(2)}</div>
+        </div>`;
+      }).join('')}</div></div>`;
+  }).join('');
 }
 
 function renderTabChooser() {
-  const el = document.getElementById('tab-chooser');
-  if (visits.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>Sin datos todavía</p></div>'; return; }
-
-  const byChooser = {};
-  visits.forEach(v => {
-    if (!v.chooserId) return;
-    if (!byChooser[v.chooserId]) byChooser[v.chooserId] = [];
-    byChooser[v.chooserId].push({ ...v, score: calcFinalScore(v) });
-  });
-
-  if (Object.keys(byChooser).length === 0) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>Ninguna visita tiene elector asignado</p></div>';
-    return;
-  }
-
-  const stats = Object.entries(byChooser).map(([pid, pvs]) => {
-    const avg = pvs.reduce((s, v) => s + v.score, 0) / pvs.length;
-    const best = pvs.reduce((a, b) => a.score > b.score ? a : b);
-    const person = people.find(p => p.id === pid);
-    return { person, avg, count: pvs.length, best };
-  }).filter(s => s.person).sort((a, b) => b.avg - a.avg);
-
-  el.innerHTML = '<div class="card" style="margin-top:4px;">' + stats.map((s, i) => `
+  const el=document.getElementById('tab-chooser');
+  if(!visits.length){el.innerHTML='<div class="empty"><div class="empty-icon">👤</div><p>Sin datos todavía</p></div>';return;}
+  const byC={};
+  visits.forEach(v=>{if(!v.chooserId)return;if(!byC[v.chooserId])byC[v.chooserId]=[];byC[v.chooserId].push({...v,score:calcFinalScore(v)});});
+  if(!Object.keys(byC).length){el.innerHTML='<div class="empty"><div class="empty-icon">👤</div><p>Ninguna visita tiene elector asignado</p></div>';return;}
+  const stats=Object.entries(byC).map(([pid,pvs])=>({
+    person:people.find(p=>p.id===pid),
+    avg:pvs.reduce((s,v)=>s+v.score,0)/pvs.length,
+    count:pvs.length,
+    best:pvs.reduce((a,b)=>a.score>b.score?a:b)
+  })).filter(s=>s.person).sort((a,b)=>b.avg-a.avg);
+  el.innerHTML='<div class="card">'+stats.map((s,i)=>`
     <div class="rank-item">
-      <div class="rank-num ${rankNumClass(i)}">${i + 1}</div>
-      <div class="rank-info">
-        <div class="rank-name">${s.person.name}</div>
-        <div class="rank-sub">${s.count} elección${s.count !== 1 ? 'es' : ''} · ⭐ ${s.best.restaurantName}</div>
+      <div class="rank-num ${rnc(i)}">${i+1}</div>
+      <div class="rank-info"><div class="rank-name">${s.person.name}</div>
+        <div class="rank-sub">${s.count} elección${s.count!==1?'es':''} · ⭐ ${esc(s.best.restaurantName)} (${s.best.score.toFixed(2)})</div>
       </div>
-      <div style="text-align:right;">
-        <div class="rank-score">${s.avg.toFixed(2)}</div>
-        <div class="rank-score-sm">/ 10</div>
-      </div>
-    </div>`).join('') + '</div>';
+      <div style="text-align:right;"><div class="rank-score">${s.avg.toFixed(2)}</div><div style="font-size:10px;color:var(--text3);">/ 10</div></div>
+    </div>`).join('')+'</div>';
 }
 
-// ═══════════════════════════════════════════
-// PEOPLE MANAGER
-// ═══════════════════════════════════════════
+// ═══════════════════════════ PEOPLE ═══════════════════════════
 function renderPeopleSettings() {
-  const el = document.getElementById('people-list-settings');
-  if (people.length === 0) {
-    el.innerHTML = '<p class="text-muted">No hay personas todavía.</p>';
-    return;
-  }
-  el.innerHTML = people.map(p => `
+  const el=document.getElementById('people-list-settings');
+  const sorted=[...people].sort((a,b)=>a.name.localeCompare(b.name));
+  el.innerHTML=sorted.length?sorted.map(p=>`
     <div class="flex items-center justify-between" style="padding:10px 0;border-bottom:0.5px solid var(--border);">
-      <span style="font-size:15px;">${p.name}</span>
+      <span style="font-size:15px;color:var(--text);">${p.name}</span>
       <button class="btn btn-danger btn-sm" onclick="deletePerson('${p.id}')">Eliminar</button>
-    </div>`).join('');
+    </div>`).join(''):'<p class="text-muted">No hay personas todavía.</p>';
 }
-
 async function addPerson() {
-  const input = document.getElementById('new-person-input');
-  const name = input.value.trim();
-  if (!name) return;
-  if (people.find(p => p.name.toLowerCase() === name.toLowerCase())) {
-    alert('Ya existe una persona con ese nombre'); return;
-  }
-  const person = { id: crypto.randomUUID(), name, createdAt: Date.now() };
-  await DB.put('people', person);
-  people.push(person);
-  input.value = '';
-  renderPeopleSettings();
+  const input=document.getElementById('new-person-input');
+  const name=input.value.trim(); if(!name) return;
+  if(people.find(p=>p.name.toLowerCase()===name.toLowerCase())){showToast('Ya existe esa persona');return;}
+  const p={id:crypto.randomUUID(),name,createdAt:Date.now()};
+  await DB.put('people',p); people.push(p); people.sort((a,b)=>a.name.localeCompare(b.name));
+  input.value=''; renderPeopleSettings();
 }
-
 async function deletePerson(id) {
-  const inUse = visits.some(v => v.diners.includes(id) || v.chooserId === id);
-  if (inUse) { alert('Esta persona aparece en visitas guardadas y no puede eliminarse.'); return; }
-  if (!confirm('¿Eliminar esta persona?')) return;
-  await DB.delete('people', id);
-  people = people.filter(p => p.id !== id);
-  renderPeopleSettings();
+  if(visits.some(v=>v.diners.includes(id)||v.chooserId===id)){showToast('Persona en visitas guardadas, no se puede eliminar');return;}
+  if(!confirm('¿Eliminar esta persona?')) return;
+  await DB.delete('people',id); people=people.filter(p=>p.id!==id); renderPeopleSettings();
 }
 
-// ═══════════════════════════════════════════
-// START
-// ═══════════════════════════════════════════
-function showFieldError(fieldId, msg) {
-  const el = document.getElementById(fieldId);
-  if (!el) return;
-  el.style.borderColor = 'var(--danger)';
-  el.focus();
-  let err = el.parentNode.querySelector('.field-err');
-  if (!err) { err = document.createElement('div'); err.className = 'field-err'; err.style.cssText = 'color:var(--danger);font-size:12px;margin-top:4px;'; el.parentNode.appendChild(err); }
-  err.textContent = msg;
-  setTimeout(() => { el.style.borderColor = ''; if (err) err.remove(); }, 3000);
-}
-
-function showToast(msg) {
-  let t = document.getElementById('toast');
-  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.style.cssText = 'position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--danger);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:200;pointer-events:none;transition:opacity 0.3s;'; document.body.appendChild(t); }
-  t.textContent = msg; t.style.opacity = '1';
-  clearTimeout(t._t); t._t = setTimeout(() => t.style.opacity = '0', 2500);
-}
-
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
-
+// ═══════════════════════════ SW + START ═══════════════════════════
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 init();
 </script>
 </body>
