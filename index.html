@@ -656,7 +656,9 @@ function renderStep5(el) {
         <div style="width:80px;font-size:13px;">${p.name}</div>
         <button style="${btnS}" onclick="adjDelta('service','${p.id}',-0.05)">−</button>
         <input type="range" min="-0.75" max="0.75" step="0.05" value="${svc}"
-          oninput="wizardData.adjustments['${p.id}'].service=parseFloat(this.value);updAdj('sv-${p.id}',this.value)" style="flex:1;min-width:0;">
+          data-adj-type="service" data-adj-diner="${p.id}"
+          oninput="wizardData.adjustments['${p.id}'].service=parseFloat(this.value);updAdj('sv-${p.id}',this.value)"
+          style="flex:1;min-width:0;">
         <button style="${btnS}" onclick="adjDelta('service','${p.id}',0.05)">+</button>
         <div class="score-val ${adjCls(svc)}" id="sv-${p.id}" style="width:50px;text-align:right;">${adjFmt(svc)}</div>
       </div>`;
@@ -668,10 +670,12 @@ function renderStep5(el) {
       const btnS = 'width:28px;height:28px;border-radius:50%;background:var(--bg2);border:0.5px solid var(--border2);cursor:pointer;font-size:14px;padding:0;flex-shrink:0;';
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <div style="width:80px;font-size:13px;">${p.name}</div>
-        <button style="${btnS}" onclick="adjDelta('price','${p.id}',-1.5)">−</button>
+        <button style="${btnS}" onclick="adjDelta('price','${p.id}',-0.05)">−</button>
         <input type="range" min="-1.5" max="1.5" step="0.05" value="${prc}"
-          oninput="wizardData.adjustments['${p.id}'].price=parseFloat(this.value);updAdj('pr-${p.id}',this.value)" style="flex:1;min-width:0;">
-        <button style="${btnS}" onclick="adjDelta('price','${p.id}',1.5)">+</button>
+          data-adj-type="price" data-adj-diner="${p.id}"
+          oninput="wizardData.adjustments['${p.id}'].price=parseFloat(this.value);updAdj('pr-${p.id}',this.value)"
+          style="flex:1;min-width:0;">
+        <button style="${btnS}" onclick="adjDelta('price','${p.id}',0.05)">+</button>
         <div class="score-val ${adjCls(prc)}" id="pr-${p.id}" style="width:50px;text-align:right;">${adjFmt(prc)}</div>
       </div>`;
     }).join('')}
@@ -788,14 +792,15 @@ function updAdj(id, val) { const e=document.getElementById(id); if(e){e.textCont
 function adjDelta(type, dinerId, delta) {
   const adj = wizardData.adjustments[dinerId];
   const current = parseFloat(adj[type]) || 0;
-  const newVal = type === 'service'
-    ? Math.max(-0.75, Math.min(0.75, Math.round((current + delta) * 100) / 100))
-    : Math.max(-1.5, Math.min(1.5, Math.round((current + delta) * 100) / 100));
+  const min = type === 'service' ? -0.75 : -1.5;
+  const max = type === 'service' ?  0.75 :  1.5;
+  const newVal = Math.max(min, Math.min(max, Math.round((current + delta) * 100) / 100));
   adj[type] = newVal;
+  // Actualizar display
   const idKey = type === 'service' ? 'sv-' : 'pr-';
   updAdj(idKey + dinerId, newVal);
-  // Actualizar el input también
-  const input = document.querySelector(`input[type="range"][value="${current}"]`);
+  // Actualizar slider — usar data attributes igual que adjustScore
+  const input = document.querySelector(`input[data-adj-type="${type}"][data-adj-diner="${dinerId}"]`);
   if (input) input.value = newVal;
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
