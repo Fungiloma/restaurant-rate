@@ -646,6 +646,8 @@ function weightsHint(hasS, hasD) {
 function renderStep5(el) {
   const diners = getDiners();
   diners.forEach(p=>{ if(!wizardData.adjustments[p.id]) wizardData.adjustments[p.id]={service:0,price:0}; });
+  const priceVal = wizardData.pricePerPerson !== null ? wizardData.pricePerPerson : '';
+  const noteVal = wizardData.note || '';
   el.innerHTML = `
   <div class="card"><div class="card-title">Servicio (± 0.75 pts)</div>
     ${diners.map(p=>`<div class="score-row">
@@ -796,7 +798,7 @@ async function wizardNext() {
     wizardData.note=document.getElementById('s5-note')?.value.trim()||'';
     await DB.put('visits', wizardData);
     visits=await DB.getAll('visits');
-    goScreen('home');
+    _doGoScreen('home');
     showResult(wizardData);
     return;
   }
