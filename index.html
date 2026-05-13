@@ -676,12 +676,9 @@ function renderStep5(el) {
 function updateScore(el, store, pi, dinerId) {
   const val = parseFloat(el.value);
   wizardData[store][pi].scores[dinerId] = val;
-  // El score-val está en el mismo contenedor flex que el slider
-  const wrap = el.parentElement;
-  if (wrap) {
-    const display = wrap.querySelector('.score-val');
-    if (display) display.textContent = val.toFixed(2);
-  }
+  // El .score-val está en el mismo div padre que el slider
+  const display = el.parentElement.querySelector('.score-val');
+  if (display) display.textContent = val.toFixed(2);
 }
 
 function adjustScore(store, pi, dinerId, delta) {
@@ -689,11 +686,11 @@ function adjustScore(store, pi, dinerId, delta) {
   const current = plate.scores[dinerId] !== undefined ? parseFloat(plate.scores[dinerId]) : DEFAULT_SCORE;
   const newVal = Math.max(0, Math.min(10, Math.round((current + delta) * 100) / 100));
   plate.scores[dinerId] = newVal;
-  // Update slider and display using data attributes
   const input = document.querySelector(`input[data-store="${store}"][data-pi="${pi}"][data-diner="${dinerId}"]`);
   if (input) {
     input.value = newVal;
-    input.closest('.score-row').querySelector('.score-val').textContent = newVal.toFixed(2);
+    const display = input.parentElement.querySelector('.score-val');
+    if (display) display.textContent = newVal.toFixed(2);
   }
 }
 
@@ -707,27 +704,27 @@ function plateCard(plate, pi, store, diners) {
   const rows = diners.map(p => {
     const val = plate.scores[p.id] !== undefined ? parseFloat(plate.scores[p.id]) : DEFAULT_SCORE;
     const skipped = !!plate.skipped[p.id];
-    const skippedInt = skipped ? 1 : 0;
     const circleBg = skipped ? 'var(--accent)' : 'transparent';
-    const dimStyle = skipped ? 'opacity:0.35;pointer-events:none;' : '';
+    const sliderOpacity = skipped ? '0.3' : '1';
+    const sliderPointer = skipped ? 'none' : '';
     return `<div style="padding:10px 0;border-bottom:0.5px solid var(--border);">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${skipped ? '0' : '8px'};">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <div style="width:22px;height:22px;border:2px solid var(--accent);border-radius:50%;cursor:pointer;flex-shrink:0;background:${circleBg};display:flex;align-items:center;justify-content:center;"
-          onclick="toggleSkip('${store}',${pi},'${p.id}',${skippedInt})">
+          onclick="event.stopPropagation();toggleSkip(this,'${store}',${pi},'${p.id}')">
           ${skipped ? '<span style="color:#fff;font-size:13px;line-height:1;">✓</span>' : ''}
         </div>
         <span style="font-size:14px;color:${skipped ? 'var(--text3)' : 'var(--text2)'};font-weight:500;">${p.name}</span>
-        ${skipped ? '<span style="font-size:11px;color:var(--text3);margin-left:auto;">No probó</span>' : ''}
       </div>
-      ${skipped ? '' : `<div style="display:flex;align-items:center;gap:8px;padding-left:32px;">
-        <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',-0.05)">−</button>
+      <div data-slider-row="${store}-${pi}-${p.id}"
+        style="display:flex;align-items:center;gap:8px;padding-left:32px;opacity:${sliderOpacity};pointer-events:${sliderPointer};">
+        <button style="${btnStyle}" onclick="event.stopPropagation();adjustScore('${store}',${pi},'${p.id}',-0.05)">−</button>
         <input type="range" min="0" max="10" step="${STEP}" value="${val}"
           data-store="${store}" data-pi="${pi}" data-diner="${p.id}"
           oninput="updateScore(this,'${store}',${pi},'${p.id}')"
           style="flex:1;">
-        <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',0.05)">+</button>
+        <button style="${btnStyle}" onclick="event.stopPropagation();adjustScore('${store}',${pi},'${p.id}',0.05)">+</button>
         <div class="score-val" style="min-width:38px;text-align:right;">${val.toFixed(2)}</div>
-      </div>`}
+      </div>
     </div>`;
   }).join('');
 
@@ -1080,13 +1077,32 @@ function _unused(store, plateIdx, dinerId, delta) {
 
 
 
-function toggleSkip(store, pi, dinerId, currentSkippedInt) {
+function toggleSkip(circleEl, store, pi, dinerId) {
   const plate = wizardData[store][pi];
   if (!plate.skipped) plate.skipped = {};
-  // currentSkippedInt es 1 si estaba marcado, 0 si no — invertimos
-  plate.skipped[dinerId] = !currentSkippedInt;
-  // Re-render el paso completo para reflejar el cambio
-  renderWizardStep();
+  // Flip el estado
+  plate.skipped[dinerId] = !plate.skipped[dinerId];
+  const skipped = plate.skipped[dinerId];
+
+  // 1. Actualizar círculo (color + tick)
+  circleEl.style.background = skipped ? 'var(--accent)' : 'transparent';
+  circleEl.innerHTML = skipped
+    ? '<span style="color:#fff;font-size:13px;line-height:1;">✓</span>'
+    : '';
+
+  // 2. Actualizar color del nombre
+  const nameEl = circleEl.nextElementSibling;
+  if (nameEl) nameEl.style.color = skipped ? 'var(--text3)' : 'var(--text2)';
+
+  // 3. Mostrar/ocultar el div de slider (siguiente sibling del nombre row)
+  // El slider está en un div data-slider-row con el dinerId
+  const sliderRow = document.querySelector(
+    `[data-slider-row="${store}-${pi}-${dinerId}"]`
+  );
+  if (sliderRow) {
+    sliderRow.style.opacity = skipped ? '0.3' : '1';
+    sliderRow.style.pointerEvents = skipped ? 'none' : '';
+  }
 }
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
