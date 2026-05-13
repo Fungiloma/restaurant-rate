@@ -647,29 +647,38 @@ function renderStep5(el) {
   const diners = getDiners();
   diners.forEach(p=>{ if(!wizardData.adjustments[p.id]) wizardData.adjustments[p.id]={service:0,price:0}; });
   const priceVal = wizardData.pricePerPerson !== null ? wizardData.pricePerPerson : '';
-  const noteVal = wizardData.note || '';
   el.innerHTML = `
   <div class="card"><div class="card-title">Servicio (± 0.75 pts)</div>
-    ${diners.map(p=>`<div class="score-row">
-      <div class="score-label">${p.name}</div>
-      <div class="score-slider-wrap">
-        <input type="range" min="-0.75" max="0.75" step="0.05" value="${wizardData.adjustments[p.id]?.service??0}"
-          oninput="wizardData.adjustments['${p.id}'].service=parseFloat(this.value);updAdj('sv-${p.id}',this.value)">
-        <div class="score-val ${adjCls(wizardData.adjustments[p.id]?.service??0)}" id="sv-${p.id}">${adjFmt(wizardData.adjustments[p.id]?.service??0)}</div>
-      </div></div>`).join('')}
+    ${diners.map(p=>{
+      const svc = wizardData.adjustments[p.id]?.service ?? 0;
+      const btnS = 'width:28px;height:28px;border-radius:50%;background:var(--bg2);border:0.5px solid var(--border2);cursor:pointer;font-size:14px;padding:0;flex-shrink:0;';
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:80px;font-size:13px;">${p.name}</div>
+        <button style="${btnS}" onclick="adjDelta('service','${p.id}',-0.05)">−</button>
+        <input type="range" min="-0.75" max="0.75" step="0.05" value="${svc}"
+          oninput="wizardData.adjustments['${p.id}'].service=parseFloat(this.value);updAdj('sv-${p.id}',this.value)" style="flex:1;min-width:0;">
+        <button style="${btnS}" onclick="adjDelta('service','${p.id}',0.05)">+</button>
+        <div class="score-val ${adjCls(svc)}" id="sv-${p.id}" style="width:50px;text-align:right;">${adjFmt(svc)}</div>
+      </div>`;
+    }).join('')}
   </div>
   <div class="card"><div class="card-title">Precio (± 1.5 pts)</div>
-    ${diners.map(p=>`<div class="score-row">
-      <div class="score-label">${p.name}</div>
-      <div class="score-slider-wrap">
-        <input type="range" min="-1.5" max="1.5" step="0.05" value="${wizardData.adjustments[p.id]?.price??0}"
-          oninput="wizardData.adjustments['${p.id}'].price=parseFloat(this.value);updAdj('pr-${p.id}',this.value)">
-        <div class="score-val ${adjCls(wizardData.adjustments[p.id]?.price??0)}" id="pr-${p.id}">${adjFmt(wizardData.adjustments[p.id]?.price??0)}</div>
-      </div></div>`).join('')}
+    ${diners.map(p=>{
+      const prc = wizardData.adjustments[p.id]?.price ?? 0;
+      const btnS = 'width:28px;height:28px;border-radius:50%;background:var(--bg2);border:0.5px solid var(--border2);cursor:pointer;font-size:14px;padding:0;flex-shrink:0;';
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:80px;font-size:13px;">${p.name}</div>
+        <button style="${btnS}" onclick="adjDelta('price','${p.id}',-1.5)">−</button>
+        <input type="range" min="-1.5" max="1.5" step="0.05" value="${prc}"
+          oninput="wizardData.adjustments['${p.id}'].price=parseFloat(this.value);updAdj('pr-${p.id}',this.value)" style="flex:1;min-width:0;">
+        <button style="${btnS}" onclick="adjDelta('price','${p.id}',1.5)">+</button>
+        <div class="score-val ${adjCls(prc)}" id="pr-${p.id}" style="width:50px;text-align:right;">${adjFmt(prc)}</div>
+      </div>`;
+    }).join('')}
   </div>
   <div class="card"><div class="card-title">Detalles adicionales</div>
-    <div class="field"><label>Precio por persona (€)</label><input type="number" id="s5-price" placeholder="Ej: 25" min="0" value="${wizardData.pricePerPerson||''}"></div>
-    <div class="field"><label>Nota rápida</label><textarea id="s5-note" placeholder="Lo que más destacó...">${esc(wizardData.note||'')}</textarea></div>
+    <div class="field"><label>Precio por persona (€)</label><input type="number" id="s5-price" placeholder="Ej: 25" min="0" value="${wizardData.pricePerPerson||''}" oninput="wizardData.pricePerPerson=parseFloat(this.value)||null"></div>
+    <div class="field"><label>Nota rápida</label><textarea id="s5-note" placeholder="Lo que más destacó..." oninput="wizardData.note=this.value">${esc(wizardData.note||'')}</textarea></div>
   </div>`;
 }
 
@@ -776,6 +785,19 @@ function changeCount(t, d) {
 function adjFmt(v) { v=parseFloat(v); return v>0?'+'+v.toFixed(2):v<0?v.toFixed(2):'0.00'; }
 function adjCls(v) { v=parseFloat(v); return v>0?'adj-positive':v<0?'adj-negative':'adj-zero'; }
 function updAdj(id, val) { const e=document.getElementById(id); if(e){e.textContent=adjFmt(val);e.className='score-val '+adjCls(val);} }
+function adjDelta(type, dinerId, delta) {
+  const adj = wizardData.adjustments[dinerId];
+  const current = parseFloat(adj[type]) || 0;
+  const newVal = type === 'service'
+    ? Math.max(-0.75, Math.min(0.75, Math.round((current + delta) * 100) / 100))
+    : Math.max(-1.5, Math.min(1.5, Math.round((current + delta) * 100) / 100));
+  adj[type] = newVal;
+  const idKey = type === 'service' ? 'sv-' : 'pr-';
+  updAdj(idKey + dinerId, newVal);
+  // Actualizar el input también
+  const input = document.querySelector(`input[type="range"][value="${current}"]`);
+  if (input) input.value = newVal;
+}
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg) { const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500); }
 
