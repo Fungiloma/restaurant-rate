@@ -2,7 +2,7 @@
   "name": "Restaurant Rater",
   "short_name": "Rater",
   "description": "Puntúa restaurantes con tu grupo",
-  "start_url": "/index.html",
+  "start_url": "/restaurant-rate/index.html",
   "display": "standalone",
   "background_color": "#0f0f1a",
   "theme_color": "#1a1a2e",
