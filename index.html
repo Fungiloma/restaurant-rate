@@ -237,6 +237,18 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
   <div class="modal" id="detail-content"></div>
 </div>
 
+<div class="modal-overlay" id="exit-modal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:28px;margin-bottom:12px;">⚠️</div>
+    <h3 style="margin-bottom:10px;">¿Salir de la puntuación?</h3>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:16px;">Si pulsas "Salir" perderás todo el progreso de esta visita.</p>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="closeExitModal()">Continuar</button>
+      <button class="btn btn-danger" style="flex:1;" onclick="confirmExit()">Salir</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" style="position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--danger);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;max-width:90vw;text-align:center;"></div>
 
 <script>
@@ -287,6 +299,7 @@ let people = [];
 let visits = [];
 let wizardData = {};
 let wizardStep = 0;
+let pendingNavTarget = null;
 const TOTAL_STEPS = 6;
 const DEFAULT_SCORE = 5.00;
 const STEP = 0.05;
@@ -418,6 +431,17 @@ function calcFinalScore(visit) {
 
 // ═══════════════════════════ NAV ═══════════════════════════
 function goScreen(name) {
+  // Si estamos en el wizard, pedir confirmación antes de salir
+  const wizardActive = document.getElementById('screen-new').classList.contains('active');
+  if (wizardActive && name !== 'new') {
+    pendingNavTarget = name;
+    document.getElementById('exit-modal').classList.add('open');
+    return;
+  }
+  _doGoScreen(name);
+}
+
+function _doGoScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
@@ -426,7 +450,21 @@ function goScreen(name) {
   if (name === 'ranking') renderRanking();
   if (name === 'home') renderHome();
   if (name === 'settings') renderPeopleSettings();
-  if (name === 'config') {} // static screen, no render needed
+  if (name === 'config') {}
+}
+
+function closeExitModal() {
+  document.getElementById('exit-modal').classList.remove('open');
+  pendingNavTarget = null;
+}
+
+function confirmExit() {
+  document.getElementById('exit-modal').classList.remove('open');
+  const target = pendingNavTarget || 'home';
+  pendingNavTarget = null;
+  wizardData = {};
+  wizardStep = 0;
+  _doGoScreen(target);
 }
 
 // ═══════════════════════════ HOME ═══════════════════════════
@@ -478,7 +516,7 @@ function startNewVisit() {
   renderWizardStep();
 }
 
-function cancelNew() { goScreen('home'); }
+function cancelNew() { _doGoScreen('home'); }
 
 function updateStepUI() {
   for (let i = 0; i < TOTAL_STEPS; i++) {
@@ -664,22 +702,27 @@ function plateCard(plate, pi, store, diners) {
   const rows = diners.map(p => {
     const val = plate.scores[p.id] !== undefined ? parseFloat(plate.scores[p.id]) : DEFAULT_SCORE;
     const skipped = !!plate.skipped[p.id];
+    const skippedInt = skipped ? 1 : 0;
+    const circleBg = skipped ? 'var(--accent)' : 'transparent';
     const dimStyle = skipped ? 'opacity:0.35;pointer-events:none;' : '';
-    return `<div class="score-row" style="align-items:center;">
-      <label style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;border:2px solid var(--accent);border-radius:50%;cursor:pointer;flex-shrink:0;background:${skipped ? 'var(--accent)' : 'transparent'};position:relative;" onclick="toggleSkip('${store}',${pi},'${p.id}',!${skipped})">
-        <input type="checkbox" ${skipped?'checked':''} style="display:none;">
-        ${skipped ? '<span style="color:#fff;font-weight:bold;font-size:14px;">✓</span>' : ''}
-      </label>
-      <div class="score-label" style="font-size:12px;margin-left:8px;">${p.name}</div>
-      <div class="score-slider-wrap" style="${dimStyle}">
+    return `<div style="padding:10px 0;border-bottom:0.5px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${skipped ? '0' : '8px'};">
+        <div style="width:22px;height:22px;border:2px solid var(--accent);border-radius:50%;cursor:pointer;flex-shrink:0;background:${circleBg};display:flex;align-items:center;justify-content:center;"
+          onclick="toggleSkip('${store}',${pi},'${p.id}',${skippedInt})">
+          ${skipped ? '<span style="color:#fff;font-size:13px;line-height:1;">✓</span>' : ''}
+        </div>
+        <span style="font-size:14px;color:${skipped ? 'var(--text3)' : 'var(--text2)'};font-weight:500;">${p.name}</span>
+        ${skipped ? '<span style="font-size:11px;color:var(--text3);margin-left:auto;">No probó</span>' : ''}
+      </div>
+      ${skipped ? '' : `<div style="display:flex;align-items:center;gap:8px;padding-left:32px;">
         <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',-0.05)">−</button>
         <input type="range" min="0" max="10" step="${STEP}" value="${val}"
           data-store="${store}" data-pi="${pi}" data-diner="${p.id}"
           oninput="updateScore(this,'${store}',${pi},'${p.id}')"
-          style="flex:1;margin:0 6px;">
+          style="flex:1;">
         <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',0.05)">+</button>
-        <div class="score-val">${val.toFixed(2)}</div>
-      </div>
+        <div class="score-val" style="min-width:38px;text-align:right;">${val.toFixed(2)}</div>
+      </div>`}
     </div>`;
   }).join('');
 
@@ -1023,16 +1066,13 @@ function _unused(store, plateIdx, dinerId, delta) {
 
 
 
-function toggleSkip(store, pi, dinerId, skipped) {
+function toggleSkip(store, pi, dinerId, currentSkippedInt) {
   const plate = wizardData[store][pi];
   if (!plate.skipped) plate.skipped = {};
-  plate.skipped[dinerId] = skipped;
-  // Actualizar visualmente el row sin re-render completo
-  const input = document.querySelector(`input[data-store="${store}"][data-pi="${pi}"][data-diner="${dinerId}"]`);
-  if (input) {
-    const wrap = input.closest('.score-slider-wrap');
-    if (wrap) wrap.style.cssText = skipped ? 'opacity:0.35;pointer-events:none;display:flex;align-items:center;' : 'display:flex;align-items:center;';
-  }
+  // currentSkippedInt es 1 si estaba marcado, 0 si no — invertimos
+  plate.skipped[dinerId] = !currentSkippedInt;
+  // Re-render el paso completo para reflejar el cambio
+  renderWizardStep();
 }
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
