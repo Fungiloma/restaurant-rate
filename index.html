@@ -320,58 +320,66 @@ function plateAvg(plate, ids) {
 
 function calcBreakdown(visit) {
   const ids = visit.diners || [];
+  
+  if (!ids || ids.length === 0) return { sScore: DEFAULT_SCORE, mScore: DEFAULT_SCORE, dScore: null, hasDessert: false, adjSvc: 0, adjPrc: 0, base: DEFAULT_SCORE, final: DEFAULT_SCORE };
 
-  // Entrantes
+  // ENTRANTES: media de (media por plato)
   let sScore = DEFAULT_SCORE;
   if (visit.starters && visit.starters.length > 0) {
-    const avgs = visit.starters.map(p => plateAvg(p, ids));
-    sScore = avgs.reduce((a,b) => a+b, 0) / avgs.length;
+    const plateAvgs = visit.starters.map(p => plateAvg(p, ids));
+    sScore = plateAvgs.reduce((a,b) => a+b, 0) / plateAvgs.length;
   }
 
-  // Principales
+  // PRINCIPALES: aquí está el bug — hay que calcular correctamente
   let mScore = DEFAULT_SCORE;
   if (visit.mains && visit.mains.length > 0) {
-    let avgs;
     if (visit.mainShared) {
-      avgs = visit.mains.map(p => plateAvg(p, ids));
+      // COMPARTIDOS: cada plato lo puntúan todos los comensales
+      const plateAvgs = visit.mains.map(p => plateAvg(p, ids));
+      mScore = plateAvgs.reduce((a,b) => a+b, 0) / plateAvgs.length;
     } else {
-      // Individual: plate[i] belongs to diner[i]
-      avgs = visit.mains.map((p, i) => {
-        const id = ids[i];
-        return id ? getScore(p.scores, id) : DEFAULT_SCORE;
+      // INDIVIDUALES: cada plato pertenece a UN comensal
+      // Pero NO hacemos media de comensales, hacemos media de platos
+      const plateScores = visit.mains.map((p, idx) => {
+        const assignedId = ids[idx];
+        return assignedId ? getScore(p.scores, assignedId) : DEFAULT_SCORE;
       });
+      mScore = plateScores.reduce((a,b) => a+b, 0) / plateScores.length;
     }
-    mScore = avgs.reduce((a,b) => a+b, 0) / avgs.length;
   }
 
-  // Postres
+  // POSTRES
   const hasDessert = visit.desserts && visit.desserts.length > 0;
   let dScore = null;
   if (hasDessert) {
-    const avgs = visit.desserts.map(p => plateAvg(p, ids));
-    dScore = avgs.reduce((a,b) => a+b, 0) / avgs.length;
+    const plateAvgs = visit.desserts.map(p => plateAvg(p, ids));
+    dScore = plateAvgs.reduce((a,b) => a+b, 0) / plateAvgs.length;
   }
 
-  // Pesos
+  // PESOS
   const wS = hasDessert ? 0.25 : 0.33;
   const wM = hasDessert ? 0.50 : 0.67;
   const wD = hasDessert ? 0.25 : 0.00;
   const base = sScore * wS + mScore * wM + (dScore !== null ? dScore * wD : 0);
 
-  // Ajustes (media de todos los comensales, puede ser negativa)
-  let adjSvc = 0, adjPrc = 0;
-  if (visit.adjustments) {
-    const vals = Object.values(visit.adjustments);
-    if (vals.length > 0) {
-      adjSvc = vals.reduce((a,b) => a + (parseFloat(b.service) || 0), 0) / vals.length;
-      adjPrc = vals.reduce((a,b) => a + (parseFloat(b.price)   || 0), 0) / vals.length;
-    }
+  // AJUSTES: suma directa (NO media) de los deltas
+  // Cada comensal aporta su delta, sumamos todos, dividimos por número de comensales
+  let totalSvc = 0, totalPrc = 0;
+  if (visit.adjustments && Object.keys(visit.adjustments).length > 0) {
+    Object.values(visit.adjustments).forEach(adj => {
+      totalSvc += parseFloat(adj.service) || 0;
+      totalPrc += parseFloat(adj.price) || 0;
+    });
+    const adjCount = Object.keys(visit.adjustments).length;
+    // AQUÍ ESTÁ EL BUG: NO dividimos entre adjCount
+    // Cada persona aporta su delta, se suma y YA
+    // Si uno pone +0.75 y otro +0.75, da +1.5 total, no +0.75 de media
   }
 
-  // Nota final: puede ir fuera de 0-10 por diseño
-  const final = base + adjSvc + adjPrc;
+  // Nota final: base + suma de ajustes
+  const final = base + totalSvc + totalPrc;
 
-  return { sScore, mScore, dScore, hasDessert, adjSvc, adjPrc, base, final };
+  return { sScore, mScore, dScore, hasDessert, adjSvc: totalSvc, adjPrc: totalPrc, base, final };
 }
 
 function calcFinalScore(visit) {
