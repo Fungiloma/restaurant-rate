@@ -676,7 +676,12 @@ function renderStep5(el) {
 function updateScore(el, store, pi, dinerId) {
   const val = parseFloat(el.value);
   wizardData[store][pi].scores[dinerId] = val;
-  el.closest('.score-row').querySelector('.score-val').textContent = val.toFixed(2);
+  // El score-val está en el mismo contenedor flex que el slider
+  const wrap = el.parentElement;
+  if (wrap) {
+    const display = wrap.querySelector('.score-val');
+    if (display) display.textContent = val.toFixed(2);
+  }
 }
 
 function adjustScore(store, pi, dinerId, delta) {
@@ -729,7 +734,7 @@ function plateCard(plate, pi, store, diners) {
   return `<div class="card">
     <input type="text" value="${esc(plate.name)}"
       style="background:transparent;border:none;border-bottom:0.5px solid var(--border);font-size:15px;font-weight:600;color:var(--text);padding:0 0 8px;width:100%;margin-bottom:8px;outline:none;font-family:inherit;"
-      onchange="wizardData.${store}[${pi}].name=this.value">
+      oninput="wizardData.${store}[${pi}].name=this.value">
     ${rows}
   </div>`;
 }
@@ -755,9 +760,18 @@ function syncPlates(store, count, prefix, diners) {
 }
 function getDiners() { return wizardData.diners.map(id=>people.find(p=>p.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name)); }
 function changeCount(t, d) {
-  if(t==='starter'){wizardData.starterCount=Math.max(1,wizardData.starterCount+d);wizardData.starters=[];}
-  else if(t==='main'){wizardData.mainCount=Math.max(1,wizardData.mainCount+d);wizardData.mains=[];}
-  else if(t==='dessert'){wizardData.dessertCount=Math.max(1,wizardData.dessertCount+d);wizardData.desserts=[];}
+  if (t === 'starter') {
+    wizardData.starterCount = Math.max(1, wizardData.starterCount + d);
+    // Solo truncar si bajamos, NO borrar todo
+    if (d < 0) wizardData.starters = wizardData.starters.slice(0, wizardData.starterCount);
+    // Si subimos, syncPlates añadirá el nuevo sin borrar los existentes
+  } else if (t === 'main') {
+    wizardData.mainCount = Math.max(1, wizardData.mainCount + d);
+    if (d < 0) wizardData.mains = wizardData.mains.slice(0, wizardData.mainCount);
+  } else if (t === 'dessert') {
+    wizardData.dessertCount = Math.max(1, wizardData.dessertCount + d);
+    if (d < 0) wizardData.desserts = wizardData.desserts.slice(0, wizardData.dessertCount);
+  }
   renderWizardStep();
 }
 function adjFmt(v) { v=parseFloat(v); return v>0?'+'+v.toFixed(2):v<0?v.toFixed(2):'0.00'; }
