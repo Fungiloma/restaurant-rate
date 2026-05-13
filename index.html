@@ -193,17 +193,22 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
         <div class="card-title">Lista de comensales</div>
         <div id="people-list-settings"></div>
       </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-config">
+    <div class="header"><h1>Ajustes</h1><p>Configuración y datos</p></div>
+    <div class="scroll">
       <div class="card">
-        <div class="card-title">Datos</div>
-        <div style="margin-bottom:12px;">
-          <button class="btn btn-primary" onclick="exportAllData()" style="margin-bottom:8px;">📥 Exportar mis datos</button>
-          <p class="text-muted" style="margin-top:6px;">Descarga un archivo JSON con todos tus restaurantes y comensales</p>
-        </div>
-        <div>
-          <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()" style="margin-bottom:8px;">📤 Importar datos</button>
-          <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importAllData(event)">
-          <p class="text-muted" style="margin-top:6px;">Carga un archivo JSON previamente exportado</p>
-        </div>
+        <div class="card-title">Exportar datos</div>
+        <p class="text-muted" style="margin-bottom:12px;">Descarga un archivo JSON con todos tus restaurantes y comensales. Úsalo como backup o para migrar a una versión nueva.</p>
+        <button class="btn btn-primary" onclick="exportAllData()">📥 Exportar mis datos</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Importar datos</div>
+        <p class="text-muted" style="margin-bottom:12px;">Carga un archivo JSON previamente exportado. No sobreescribe datos existentes — solo añade los que no estén.</p>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📤 Importar datos</button>
+        <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importAllData(event)">
       </div>
     </div>
   </div>
@@ -211,7 +216,7 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
   <nav class="nav-bottom">
     <button class="nav-btn active" id="nav-home" onclick="goScreen('home')">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Visitas
+      Restaurantes
     </button>
     <button class="nav-btn" id="nav-ranking" onclick="goScreen('ranking')">
       <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -220,6 +225,10 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
     <button class="nav-btn" id="nav-settings" onclick="goScreen('settings')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       Personas
+    </button>
+    <button class="nav-btn" id="nav-config" onclick="goScreen('config')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Ajustes
     </button>
   </nav>
 </div>
@@ -318,16 +327,28 @@ function plateAvg(plate, ids) {
   return sum / ids.length;
 }
 
+// plateAvgSkip: excluye comensales con skipped[id]=true
+// Devuelve null si TODOS están marcados como "no probó"
+function plateAvgSkip(plate, ids) {
+  const skipped = plate.skipped || {};
+  const active = ids.filter(id => !skipped[id]);
+  if (active.length === 0) return null;
+  const sum = active.reduce((acc, id) => acc + getScore(plate.scores, id), 0);
+  return sum / active.length;
+}
+
 function calcBreakdown(visit) {
   const ids = visit.diners || [];
-  
-  if (!ids || ids.length === 0) return { sScore: DEFAULT_SCORE, mScore: DEFAULT_SCORE, dScore: null, hasDessert: false, adjSvc: 0, adjPrc: 0, base: DEFAULT_SCORE, final: DEFAULT_SCORE };
 
-  // ENTRANTES: media de (media por plato)
-  let sScore = DEFAULT_SCORE;
-  if (visit.starters && visit.starters.length > 0) {
-    const plateAvgs = visit.starters.map(p => plateAvg(p, ids));
-    sScore = plateAvgs.reduce((a,b) => a+b, 0) / plateAvgs.length;
+  if (!ids || ids.length === 0) return { sScore: null, mScore: DEFAULT_SCORE, dScore: null, hasStarter: false, hasDessert: false, adjSvc: 0, adjPrc: 0, base: DEFAULT_SCORE, final: DEFAULT_SCORE };
+
+  // ENTRANTES
+  const hasStarter = visit.hasStarter !== false && visit.starters && visit.starters.length > 0;
+  let sScore = null;
+  if (hasStarter) {
+    const plateAvgs = visit.starters.map(p => plateAvgSkip(p, ids));
+    const validAvgs = plateAvgs.filter(v => v !== null);
+    sScore = validAvgs.length > 0 ? validAvgs.reduce((a,b) => a+b, 0) / validAvgs.length : null;
   }
 
   // PRINCIPALES: aquí está el bug — hay que calcular correctamente
@@ -353,18 +374,24 @@ function calcBreakdown(visit) {
   }
 
   // POSTRES
-  const hasDessert = visit.desserts && visit.desserts.length > 0;
+  const hasDessert = visit.hasDessert !== false && visit.desserts && visit.desserts.length > 0;
   let dScore = null;
   if (hasDessert) {
-    const plateAvgs = visit.desserts.map(p => plateAvg(p, ids));
-    dScore = plateAvgs.reduce((a,b) => a+b, 0) / plateAvgs.length;
+    const plateAvgs = visit.desserts.map(p => plateAvgSkip(p, ids));
+    const validAvgs = plateAvgs.filter(v => v !== null);
+    dScore = validAvgs.length > 0 ? validAvgs.reduce((a,b) => a+b, 0) / validAvgs.length : null;
   }
 
-  // PESOS
-  const wS = hasDessert ? 0.25 : 0.33;
-  const wM = hasDessert ? 0.50 : 0.67;
-  const wD = hasDessert ? 0.25 : 0.00;
-  const base = sScore * wS + mScore * wM + (dScore !== null ? dScore * wD : 0);
+  // PESOS — tabla completa según combinación
+  // hasStarter | hasDessert => pesos
+  //    true     |   true    => 25 / 50 / 25
+  //    false    |   true    =>  0 / 67 / 33
+  //    true     |   false   => 33 / 67 /  0
+  //    false    |   false   =>  0 /100 /  0
+  const wS = (hasStarter && sScore !== null) ? (hasDessert && dScore !== null ? 0.25 : 0.33) : 0;
+  const wD = (hasDessert && dScore !== null) ? (hasStarter && sScore !== null ? 0.25 : 0.33) : 0;
+  const wM = 1 - wS - wD;
+  const base = (sScore !== null ? sScore * wS : 0) + mScore * wM + (dScore !== null ? dScore * wD : 0);
 
   // AJUSTES: media de los deltas de todos los comensales
   let adjSvc = 0, adjPrc = 0;
@@ -382,7 +409,7 @@ function calcBreakdown(visit) {
   // Nota final: base + media de ajustes
   const final = base + adjSvc + adjPrc;
 
-  return { sScore, mScore, dScore, hasDessert, adjSvc, adjPrc, base, final };
+  return { sScore, mScore, dScore, hasStarter, hasDessert, adjSvc, adjPrc, base, final };
 }
 
 function calcFinalScore(visit) {
@@ -399,6 +426,7 @@ function goScreen(name) {
   if (name === 'ranking') renderRanking();
   if (name === 'home') renderHome();
   if (name === 'settings') renderPeopleSettings();
+  if (name === 'config') {} // static screen, no render needed
 }
 
 // ═══════════════════════════ HOME ═══════════════════════════
@@ -440,7 +468,7 @@ function startNewVisit() {
   wizardData = {
     id: crypto.randomUUID(), date: Date.now(),
     restaurantName:'', category:'', chooserId:null,
-    diners:[], starterCount:1, mainShared:false, mainCount:2,
+    diners:[], hasStarter:true, starterCount:1, mainShared:false, mainCount:2,
     hasDessert:true, dessertCount:1,
     starters:[], mains:[], desserts:[],
     adjustments:{}, pricePerPerson:null, note:''
@@ -484,9 +512,9 @@ function renderStep0(el) {
         ${CATEGORIES.map(c=>`<option value="${c}"${wizardData.category===c?' selected':''}>${c}</option>`).join('')}
       </select>
     </div>
-    <div class="field"><label>¿Quién eligió el restaurante?</label>
+    <div class="field"><label>¿Quién eligió el restaurante? *</label>
       <select id="s0-chooser">
-        <option value="">Sin especificar</option>
+        <option value="">Selecciona elector</option>
         ${[...people].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}"${wizardData.chooserId===p.id?' selected':''}>${p.name}</option>`).join('')}
       </select>
     </div>
@@ -510,11 +538,27 @@ function toggleDiner(id, el) {
 }
 
 function renderStep2(el) {
+  if (!wizardData.hasStarter) {
+    el.innerHTML = `<div class="card"><div class="card-title">Entrantes</div>
+      <div class="toggle-group">
+        <button class="toggle-opt" onclick="setStarter(true)">Con entrantes</button>
+        <button class="toggle-opt active" onclick="setStarter(false)">Sin entrantes</button>
+      </div>
+      <p class="text-muted mt-12">${weightsHint(false, wizardData.hasDessert)}</p>
+    </div>`;
+    return;
+  }
   syncPlates('starters', wizardData.starterCount, 'Entrante', null);
-  el.innerHTML = `<div class="card"><div class="card-title">Número de entrantes</div>
-    <div class="stepper"><button onclick="changeCount('starter',-1)">−</button><span>${wizardData.starterCount}</span><button onclick="changeCount('starter',1)">+</button></div>
+  el.innerHTML = `<div class="card"><div class="card-title">Entrantes</div>
+    <div class="toggle-group">
+      <button class="toggle-opt active" onclick="setStarter(true)">Con entrantes</button>
+      <button class="toggle-opt" onclick="setStarter(false)">Sin entrantes</button>
+    </div>
+    <div class="stepper mt-12"><button onclick="changeCount('starter',-1)">−</button><span>${wizardData.starterCount}</span><button onclick="changeCount('starter',1)">+</button></div>
   </div>${wizardData.starters.map((p,i)=>plateCard(p,i,'starters',getDiners())).join('')}`;
 }
+
+function setStarter(has) { wizardData.hasStarter=has; if(!has) wizardData.starters=[]; renderWizardStep(); }
 
 function renderStep3(el) {
   const diners = getDiners();
@@ -537,7 +581,7 @@ function renderStep4(el) {
         <button class="toggle-opt" onclick="setDessert(true)">Con postres</button>
         <button class="toggle-opt active" onclick="setDessert(false)">Sin postres</button>
       </div>
-      <p class="text-muted mt-12">Pesos redistribuidos: 33% entrantes / 67% principales</p>
+      <p class="text-muted mt-12">${weightsHint(wizardData.hasStarter, false)}</p>
     </div>`;
     return;
   }
@@ -552,6 +596,14 @@ function renderStep4(el) {
 }
 
 function setDessert(has) { wizardData.hasDessert=has; if(!has) wizardData.desserts=[]; renderWizardStep(); }
+
+// Texto explicativo de pesos según combinación
+function weightsHint(hasS, hasD) {
+  if (!hasS && !hasD) return 'Pesos: 100% principales';
+  if (!hasS &&  hasD) return 'Pesos redistribuidos: 67% principales / 33% postres';
+  if ( hasS && !hasD) return 'Pesos redistribuidos: 33% entrantes / 67% principales';
+  return 'Pesos: 25% entrantes / 50% principales / 25% postres';
+}
 
 function renderStep5(el) {
   const diners = getDiners();
@@ -608,11 +660,14 @@ function plateCard(plate, pi, store, diners) {
 
   const btnStyle = 'background:var(--bg2);border:0.5px solid var(--border2);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1;padding:0;font-family:inherit;flex-shrink:0;';
 
+  if (!plate.skipped) plate.skipped = {};
   const rows = diners.map(p => {
     const val = plate.scores[p.id] !== undefined ? parseFloat(plate.scores[p.id]) : DEFAULT_SCORE;
-    return `<div class="score-row">
-      <div class="score-label">${p.name}</div>
-      <div class="score-slider-wrap">
+    const skipped = !!plate.skipped[p.id];
+    const dimStyle = skipped ? 'opacity:0.35;pointer-events:none;' : '';
+    return `<div class="score-row" style="align-items:center;">
+      <div class="score-label" style="font-size:12px;">${p.name}</div>
+      <div class="score-slider-wrap" style="${dimStyle}">
         <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',-0.05)">−</button>
         <input type="range" min="0" max="10" step="${STEP}" value="${val}"
           data-store="${store}" data-pi="${pi}" data-diner="${p.id}"
@@ -621,6 +676,10 @@ function plateCard(plate, pi, store, diners) {
         <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',0.05)">+</button>
         <div class="score-val">${val.toFixed(2)}</div>
       </div>
+      <label style="display:flex;align-items:center;gap:4px;margin-left:6px;cursor:pointer;font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0;">
+        <input type="checkbox" ${skipped?'checked':''} onchange="toggleSkip('${store}',${pi},'${p.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;">
+        N/P
+      </label>
     </div>`;
   }).join('');
 
@@ -670,10 +729,12 @@ async function wizardNext() {
   if (wizardStep===0) {
     const name=document.getElementById('s0-name')?.value.trim();
     const cat=document.getElementById('s0-cat')?.value;
+    const chooserId=document.getElementById('s0-chooser')?.value||null;
     if(!name){showToast('Introduce el nombre del restaurante');return;}
     if(!cat){showToast('Selecciona una categoría');return;}
+    if(!chooserId){showToast('Selecciona quién eligió el restaurante');return;}
     wizardData.restaurantName=name; wizardData.category=cat;
-    wizardData.chooserId=document.getElementById('s0-chooser')?.value||null;
+    wizardData.chooserId=chooserId;
   }
   if (wizardStep===1 && wizardData.diners.length===0) { showToast('Selecciona al menos un comensal'); return; }
   if (wizardStep===TOTAL_STEPS-1) {
@@ -713,7 +774,7 @@ function buildDetail(visit, isNew) {
     <div class="result-label" style="font-size:13px;color:var(--text3);">${diners.map(d=>d.name).join(', ')}</div>
   </div>
   <div class="result-grid">
-    <div class="result-mini"><div class="result-mini-val">${bd.sScore.toFixed(2)}</div><div class="result-mini-lbl">Entrantes</div></div>
+    <div class="result-mini"><div class="result-mini-val">${bd.sScore !== null ? bd.sScore.toFixed(2) : '—'}</div><div class="result-mini-lbl">Entrantes</div></div>
     <div class="result-mini"><div class="result-mini-val">${bd.mScore.toFixed(2)}</div><div class="result-mini-lbl">Principales</div></div>
     <div class="result-mini"><div class="result-mini-val">${bd.hasDessert?bd.dScore.toFixed(2):'—'}</div><div class="result-mini-lbl">Postres</div></div>
   </div>
@@ -960,6 +1021,19 @@ function _unused(store, plateIdx, dinerId, delta) {
   }
 }
 
+
+
+function toggleSkip(store, pi, dinerId, skipped) {
+  const plate = wizardData[store][pi];
+  if (!plate.skipped) plate.skipped = {};
+  plate.skipped[dinerId] = skipped;
+  // Actualizar visualmente el row sin re-render completo
+  const input = document.querySelector(`input[data-store="${store}"][data-pi="${pi}"][data-diner="${dinerId}"]`);
+  if (input) {
+    const wrap = input.closest('.score-slider-wrap');
+    if (wrap) wrap.style.cssText = skipped ? 'opacity:0.35;pointer-events:none;display:flex;align-items:center;' : 'display:flex;align-items:center;';
+  }
+}
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 init();
