@@ -338,10 +338,14 @@ function calcBreakdown(visit) {
       const plateAvgs = visit.mains.map(p => plateAvg(p, ids));
       mScore = plateAvgs.reduce((a,b) => a+b, 0) / plateAvgs.length;
     } else {
-      // INDIVIDUALES: cada plato pertenece a UN comensal
-      // Pero NO hacemos media de comensales, hacemos media de platos
+      // INDIVIDUALES: orden alfabético, igual que getDiners() en el render
+      const sortedIds = [...ids]
+        .map(id => people.find(p => p.id === id))
+        .filter(Boolean)
+        .sort((a,b) => a.name.localeCompare(b.name))
+        .map(p => p.id);
       const plateScores = visit.mains.map((p, idx) => {
-        const assignedId = ids[idx];
+        const assignedId = sortedIds[idx];
         return assignedId ? getScore(p.scores, assignedId) : DEFAULT_SCORE;
       });
       mScore = plateScores.reduce((a,b) => a+b, 0) / plateScores.length;
@@ -578,23 +582,53 @@ function renderStep5(el) {
 }
 
 // ─── PLATE CARD ───
+// updateScore: called by slider oninput — updates data and display
+function updateScore(el, store, pi, dinerId) {
+  const val = parseFloat(el.value);
+  wizardData[store][pi].scores[dinerId] = val;
+  el.closest('.score-row').querySelector('.score-val').textContent = val.toFixed(2);
+}
+
+function adjustScore(store, pi, dinerId, delta) {
+  const plate = wizardData[store][pi];
+  const current = plate.scores[dinerId] !== undefined ? parseFloat(plate.scores[dinerId]) : DEFAULT_SCORE;
+  const newVal = Math.max(0, Math.min(10, Math.round((current + delta) * 100) / 100));
+  plate.scores[dinerId] = newVal;
+  // Update slider and display using data attributes
+  const input = document.querySelector(`input[data-store="${store}"][data-pi="${pi}"][data-diner="${dinerId}"]`);
+  if (input) {
+    input.value = newVal;
+    input.closest('.score-row').querySelector('.score-val').textContent = newVal.toFixed(2);
+  }
+}
+
 function plateCard(plate, pi, store, diners) {
   // Initialize all diner scores to DEFAULT if not set
   diners.forEach(p => { if (plate.scores[p.id] === undefined) plate.scores[p.id] = DEFAULT_SCORE; });
+
+  const btnStyle = 'background:var(--bg2);border:0.5px solid var(--border2);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;line-height:1;padding:0;font-family:inherit;flex-shrink:0;';
+
+  const rows = diners.map(p => {
+    const val = plate.scores[p.id] !== undefined ? parseFloat(plate.scores[p.id]) : DEFAULT_SCORE;
+    return `<div class="score-row">
+      <div class="score-label">${p.name}</div>
+      <div class="score-slider-wrap">
+        <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',-0.05)">−</button>
+        <input type="range" min="0" max="10" step="${STEP}" value="${val}"
+          data-store="${store}" data-pi="${pi}" data-diner="${p.id}"
+          oninput="updateScore(this,'${store}',${pi},'${p.id}')"
+          style="flex:1;margin:0 6px;">
+        <button style="${btnStyle}" onclick="adjustScore('${store}',${pi},'${p.id}',0.05)">+</button>
+        <div class="score-val">${val.toFixed(2)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
   return `<div class="card">
-    <input type="text" value="${esc(plate.name)}" style="background:transparent;border:none;border-bottom:0.5px solid var(--border);font-size:15px;font-weight:600;color:var(--text);padding:0 0 8px;width:100%;margin-bottom:8px;outline:none;font-family:inherit;" onchange="wizardData.${store}[${pi}].name=this.value">
-    ${diners.map(p=>{
-      const val = parseFloat(plate.scores[p.id]) || DEFAULT_SCORE;
-      return `<div class="score-row">
-        <div class="score-label">${p.name}</div>
-        <div class="score-slider-wrap">
-          <button style="background:var(--bg2);border:0.5px solid var(--border2);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;padding:0;" onclick="adjustScore('${store}',${pi},'${p.id}',-0.05)">−</button>
-          <input type="range" min="0" max="10" step="${STEP}" value="${val}"
-            oninput="wizardData.${store}[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)" style="margin:0 6px;">
-          <button style="background:var(--bg2);border:0.5px solid var(--border2);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;padding:0;" onclick="adjustScore('${store}',${pi},'${p.id}',0.05)">+</button>
-          <div class="score-val">${val.toFixed(2)}</div>
-        </div></div>`;
-    }).join('')}
+    <input type="text" value="${esc(plate.name)}"
+      style="background:transparent;border:none;border-bottom:0.5px solid var(--border);font-size:15px;font-weight:600;color:var(--text);padding:0 0 8px;width:100%;margin-bottom:8px;outline:none;font-family:inherit;"
+      onchange="wizardData.${store}[${pi}].name=this.value">
+    ${rows}
   </div>`;
 }
 
@@ -908,17 +942,22 @@ function showChooserDetail(chooserId) {
 
 
 
-function adjustScore(store, plateIdx, dinerId, delta) {
+function _unused(store, plateIdx, dinerId, delta) {
   const plate = wizardData[store][plateIdx];
   const current = parseFloat(plate.scores[dinerId]) || DEFAULT_SCORE;
   const newVal = Math.max(0, Math.min(10, Math.round((current + delta) * 100) / 100));
   plate.scores[dinerId] = newVal;
-  // Actualizar UI
-  const event = new Event('change', { bubbles: true });
-  document.querySelectorAll(`input[type="range"]`).forEach(inp => {
-    if (inp.value === String(current)) inp.value = newVal;
-    inp.nextElementSibling.textContent = newVal.toFixed(2);
-  });
+  const selector = `input[data-store="${store}"][data-plate="${plateIdx}"][data-diner="${dinerId}"]`;
+  const input = document.querySelector(selector);
+  if (input) {
+    input.value = newVal;
+    // El display es el último elemento .score-val en el mismo score-row
+    const scoreRow = input.closest('.score-row');
+    if (scoreRow) {
+      const display = scoreRow.querySelector('.score-val');
+      if (display) display.textContent = newVal.toFixed(2);
+    }
+  }
 }
 
 
