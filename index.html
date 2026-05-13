@@ -193,6 +193,18 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
         <div class="card-title">Lista de comensales</div>
         <div id="people-list-settings"></div>
       </div>
+      <div class="card">
+        <div class="card-title">Datos</div>
+        <div style="margin-bottom:12px;">
+          <button class="btn btn-primary" onclick="exportAllData()" style="margin-bottom:8px;">📥 Exportar mis datos</button>
+          <p class="text-muted" style="margin-top:6px;">Descarga un archivo JSON con todos tus restaurantes y comensales</p>
+        </div>
+        <div>
+          <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()" style="margin-bottom:8px;">📤 Importar datos</button>
+          <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importAllData(event)">
+          <p class="text-muted" style="margin-top:6px;">Carga un archivo JSON previamente exportado</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -732,7 +744,7 @@ function renderTabChooser() {
     best:pvs.reduce((a,b)=>a.score>b.score?a:b)
   })).filter(s=>s.person).sort((a,b)=>b.avg-a.avg);
   el.innerHTML='<div class="card">'+stats.map((s,i)=>`
-    <div class="rank-item">
+    <div class="rank-item" onclick="showChooserDetail('${s.person.id}')" style="cursor:pointer;">
       <div class="rank-num ${rnc(i)}">${i+1}</div>
       <div class="rank-info"><div class="rank-name">${s.person.name}</div>
         <div class="rank-sub">${s.count} elección${s.count!==1?'es':''} · ⭐ ${esc(s.best.restaurantName)} (${s.best.score.toFixed(2)})</div>
@@ -766,6 +778,116 @@ async function deletePerson(id) {
 }
 
 // ═══════════════════════════ SW + START ═══════════════════════════
+
+// ═══════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+async function exportAllData() {
+  const dataToExport = {
+    version: '1.5',
+    exportedAt: new Date().toISOString(),
+    visits: visits,
+    people: people
+  };
+  
+  const json = JSON.stringify(dataToExport, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `restaurant-rater-backup-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ Datos exportados correctamente');
+}
+
+async function importAllData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    
+    if (!data.visits || !Array.isArray(data.visits)) {
+      showToast('❌ Formato JSON inválido');
+      return;
+    }
+    
+    // Importar personas
+    if (data.people && Array.isArray(data.people)) {
+      for (const p of data.people) {
+        const exists = people.find(x => x.id === p.id);
+        if (!exists) {
+          await DB.put('people', p);
+          people.push(p);
+        }
+      }
+    }
+    
+    // Importar visitas
+    for (const v of data.visits) {
+      const exists = visits.find(x => x.id === v.id);
+      if (!exists) {
+        await DB.put('visits', v);
+        visits.push(v);
+      }
+    }
+    
+    people.sort((a,b) => a.name.localeCompare(b.name));
+    renderHome();
+    renderPeopleSettings();
+    showToast('✓ ' + data.visits.length + ' restaurantes importados');
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Error al importar: ' + err.message);
+  }
+  
+  document.getElementById('import-file').value = '';
+}
+
+
+function showChooserDetail(chooserId) {
+  const chooser = people.find(p => p.id === chooserId);
+  if (!chooser) return;
+  
+  const theirVisits = visits.filter(v => v.chooserId === chooserId);
+  const scored = theirVisits.map(v => ({...v, score: calcFinalScore(v)})).sort((a,b) => b.score - a.score);
+  const avg = scored.reduce((s,v) => s+v.score, 0) / (scored.length || 1);
+  
+  let html = `<h3>${chooser.name} — Restaurantes elegidos</h3>
+    <div style="background:var(--bg2);border-radius:var(--r2);padding:12px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:13px;color:var(--text3);">Media de puntuación</div>
+      <div style="font-size:28px;font-weight:900;color:var(--accent);">${avg.toFixed(2)}</div>
+      <div style="font-size:12px;color:var(--text3);">${scored.length} restaurante${scored.length!==1?'s':''}</div>
+    </div>
+    <div class="card">`;
+  
+  if (scored.length === 0) {
+    html += '<div class="empty" style="padding:30px 0;"><p>Sin restaurantes</p></div>';
+  } else {
+    html += scored.map((v,i) => {
+      const sc = scoreColor(v.score);
+      return `<div class="rank-item" onclick="showDetail('${v.id}')">
+        <div class="rank-num">${i+1}</div>
+        <div class="rank-info">
+          <div class="rank-name">${esc(v.restaurantName)}</div>
+          <div class="rank-sub">${v.category}</div>
+        </div>
+        <div style="text-align:right;"><div class="rank-score" style="color:${sc}">${v.score.toFixed(2)}</div></div>
+      </div>`;
+    }).join('');
+  }
+  
+  html += '</div><div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-secondary" style="flex:1;" onclick="closeDetail()">Cerrar</button></div>';
+  
+  document.getElementById('detail-content').innerHTML = html;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 init();
 </script>
