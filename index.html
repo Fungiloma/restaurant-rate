@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rater">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Restaurant Rater</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --bg2: #1a1a2e;
+    --bg3: #16213e;
+    --surface: #1e1e32;
+    --surface2: #252540;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --accent: #e8b86d;
+    --accent2: #f0d090;
+    --accent-dim: rgba(232,184,109,0.15);
+    --text: #f0ede8;
+    --text2: #a8a4a0;
+    --text3: #6a6670;
+    --danger: #e85d5d;
+    --success: #5db88a;
+    --r: 12px;
+    --r2: 8px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  
+  #app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  
+  /* NAV BOTTOM */
+  .nav-bottom {
+    display: flex; background: var(--bg2); border-top: 0.5px solid var(--border);
+    padding: 8px 0 calc(8px + var(--safe-bottom)); flex-shrink: 0;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 6px 0; background: none; border: none; color: var(--text3);
+    font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
+    transition: color 0.2s;
+  }
+  .nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+  .nav-btn.active { color: var(--accent); }
+  
+  /* SCREENS */
+  .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .screen.active { display: flex; }
+  
+  /* HEADER */
+  .header {
+    padding: calc(var(--safe-top) + 16px) 20px 16px;
+    background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+  .header p { font-size: 13px; color: var(--text3); margin-top: 2px; }
+  
+  /* SCROLL AREA */
+  .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 20px calc(16px + var(--safe-bottom)); }
+  
+  /* CARDS */
+  .card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--r); padding: 16px; margin-bottom: 12px;
+  }
+  .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 12px; }
+  
+  /* INPUTS */
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%; background: var(--bg3); border: 0.5px solid var(--border2);
+    border-radius: var(--r2); color: var(--text); font-size: 15px;
+    padding: 12px 14px; outline: none; appearance: none; -webkit-appearance: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a8a4a0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  textarea { resize: none; min-height: 72px; font-family: inherit; }
+  label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 6px; }
+  .field { margin-bottom: 14px; }
+  
+  /* BUTTONS */
+  .btn {
+    width: 100%; padding: 14px; border-radius: var(--r); border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+    letter-spacing: 0.2px;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: #1a1100; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 0.5px solid var(--border2); }
+  .btn-danger { background: rgba(232,93,93,0.15); color: var(--danger); border: 0.5px solid rgba(232,93,93,0.3); }
+  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; border-radius: var(--r2); }
+  
+  /* CHIPS / TAGS */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 7px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    border: 0.5px solid var(--border2); background: var(--bg3); color: var(--text2);
+    transition: all 0.15s; user-select: none;
+  }
+  .chip.selected { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  
+  /* SCORE SLIDER */
+  .score-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+  .score-label { font-size: 13px; color: var(--text2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .score-slider-wrap { display: flex; align-items: center; gap: 10px; flex: 1.4; }
+  input[type="range"] {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 4px; border-radius: 2px; background: var(--surface2);
+    outline: none; border: none; padding: 0;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px;
+    border-radius: 50%; background: var(--accent);
+    cursor: pointer; border: 3px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .score-val {
+    font-size: 15px; font-weight: 700; color: var(--accent);
+    min-width: 34px; text-align: right;
+  }
+  .score-divider { border: none; border-top: 0.5px solid var(--border); margin: 4px 0; }
+  
+  /* SECTION HEADER */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .section-badge {
+    font-size: 11px; background: var(--accent-dim); color: var(--accent);
+    padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--accent);
+  }
+  
+  /* TOGGLE */
+  .toggle-group { display: flex; background: var(--bg3); border-radius: var(--r2); padding: 3px; gap: 3px; }
+  .toggle-opt {
+    flex: 1; padding: 9px; text-align: center; font-size: 13px;
+    border-radius: 6px; cursor: pointer; color: var(--text3); transition: all 0.15s;
+    border: none; background: none;
+  }
+  .toggle-opt.active { background: var(--surface2); color: var(--text); font-weight: 600; }
+  
+  /* STEP INDICATOR */
+  .steps { display: flex; align-items: center; gap: 6px; padding: 12px 20px; background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface2); transition: all 0.3s; }
+  .step-dot.done { background: var(--accent); }
+  .step-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+  .step-label { font-size: 12px; color: var(--text2); margin-left: auto; }
+  
+  /* RANKING */
+  .rank-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0; border-bottom: 0.5px solid var(--border);
+  }
+  .rank-item:last-child { border-bottom: none; }
+  .rank-num { font-size: 16px; font-weight: 800; color: var(--text3); min-width: 24px; }
+  .rank-num.gold { color: #f0c040; }
+  .rank-num.silver { color: #c0c0c0; }
+  .rank-num.bronze { color: #cd7f32; }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .rank-score { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .rank-score-sm { font-size: 12px; color: var(--text3); font-weight: 400; }
+  
+  /* TABS */
+  .tabs { display: flex; background: var(--bg2); border-bottom: 0.5px solid var(--border); flex-shrink: 0; padding: 0 20px; }
+  .tab { padding: 12px 16px; font-size: 13px; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 60px 20px; }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+  .empty p { color: var(--text3); font-size: 14px; }
+  
+  /* FAB */
+  .fab {
+    position: fixed; bottom: calc(80px + var(--safe-bottom)); right: 20px;
+    width: 52px; height: 52px; border-radius: 50%; background: var(--accent);
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(232,184,109,0.4); transition: transform 0.15s; z-index: 10;
+  }
+  .fab:active { transform: scale(0.92); }
+  .fab svg { width: 24px; height: 24px; stroke: #1a1100; fill: none; stroke-width: 2.5; }
+  
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
+    display: none; align-items: flex-end; padding: 0;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    width: 100%; background: var(--bg2); border-radius: var(--r) var(--r) 0 0;
+    padding: 20px 20px calc(20px + var(--safe-bottom));
+    border-top: 0.5px solid var(--border2);
+  }
+  .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+  
+  /* RESULT CARD */
+  .result-score { text-align: center; padding: 24px 0 16px; }
+  .result-big { font-size: 64px; font-weight: 900; color: var(--accent); letter-spacing: -3px; line-height: 1; }
+  .result-label { font-size: 13px; color: var(--text3); margin-top: 4px; }
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 16px 0; }
+  .result-mini { background: var(--bg3); border-radius: var(--r2); padding: 10px; text-align: center; }
+  .result-mini-val { font-size: 18px; font-weight: 700; color: var(--text); }
+  .result-mini-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* PILL */
+  .pill { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--text2); margin: 3px; }
+  .pill button { background: none; border: none; color: var(--text3); cursor: pointer; padding: 0; font-size: 14px; line-height: 1; }
+
+  /* PEOPLE MANAGER */
+  .people-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; }
+
+  /* NUMBER STEPPER */
+  .stepper { display: flex; align-items: center; gap: 12px; }
+  .stepper button { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); border: 0.5px solid var(--border2); color: var(--text); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .stepper button:active { background: var(--accent-dim); }
+  .stepper span { font-size: 20px; font-weight: 700; min-width: 32px; text-align: center; }
+
+  .gap-8 { gap: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-8 { margin-top: 8px; }
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .text-accent { color: var(--accent); }
+  .text-muted { color: var(--text3); font-size: 13px; }
+  .fw-700 { font-weight: 700; }
+  .fs-13 { font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════
+       SCREEN: HOME (visits list)
+  ═══════════════════════════════════ -->
+  <div class="screen active" id="screen-home">
+    <div class="header">
+      <h1>🍽 Restaurant Rater</h1>
+      <p id="home-subtitle">0 restaurantes puntuados</p>
+    </div>
+    <div class="scroll" id="home-list">
+      <div class="empty">
+        <div class="empty-icon">🍴</div>
+        <p>Todavía no hay visitas.<br>Pulsa + para empezar.</p>
+      </div>
+    </div>
+    <button class="fab" onclick="startNewVisit()">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN: NUEVA VISITA (wizard)
+  ═══════════════════════════════════ -->
+  <div class="screen" id="screen-new">
+    <div class="header" style="padding-bottom:12px;">
+      <div class="flex items-center justify-between">
+        <button onclick="cancelNew()" style="background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:0;">✕ Cancelar</button>
+        <span id="wizard-title" style="font-size:14px;font-weight:600;color:var(--text2)">Nueva visita</span>
+        <div style="width:60px"></div>
+      </div>
+    </div>
+    <div class="steps" id="wizard-steps">
+      <div class="step-dot active" id="dot-0"></div>
+      <div class="step-dot" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+      <div class="step-dot" id="dot-4"></div>
+      <div class="step-dot" id="dot-5"></div>
+      <span class="step-label" id="step-label">1 / 6</span>
+    </div>
+    <div class="scroll" id="wizard-content"></div>
+    <div style="padding:12px 20px calc(12px + var(--safe-bottom)); background:var(--bg2); border-top:0.5px solid var(--border); flex-shrink:0;" id="wizard-footer">
+      <button class="btn btn-primary" id="wizard-next-btn" onclick="wizardNext()">Siguiente →</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN: RANKING
+  ═══════════════════════════════════ -->
+  <div class="screen" id="screen-ranking">
+    <div class="header">
+      <h1>Ranking</h1>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('global')">Global</div>
+      <div class="tab" onclick="switchTab('category')">Por categoría</div>
+      <div class="tab" onclick="switchTab('chooser')">Electores</div>
+    </div>
+    <div class="scroll" id="ranking-content">
+      <div id="tab-global" class="tab-content active"></div>
+      <div id="tab-category" class="tab-content"></div>
+      <div id="tab-chooser" class="tab-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SCREEN: AJUSTES (comensales)
+  ═══════════════════════════════════ -->
+  <div class="screen" id="screen-settings">
+    <div class="header">
+      <h1>Comensales</h1>
+      <p>Gestiona la lista de personas</p>
+    </div>
+    <div class="scroll">
+      <div class="card">
+        <div class="card-title">Añadir persona</div>
+        <div class="flex gap-8">
+          <input type="text" id="new-person-input" placeholder="Nombre" style="flex:1;" onkeydown="if(event.key==='Enter')addPerson()">
+          <button class="btn btn-primary btn-sm" onclick="addPerson()">Añadir</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Lista de comensales</div>
+        <div id="people-list-settings"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV BOTTOM -->
+  <nav class="nav-bottom">
+    <button class="nav-btn active" id="nav-home" onclick="goScreen('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Visitas
+    </button>
+    <button class="nav-btn" id="nav-ranking" onclick="goScreen('ranking')">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Ranking
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="goScreen('settings')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Personas
+    </button>
+  </nav>
+
+</div>
+
+<!-- MODAL: detail visit -->
+<div class="modal-overlay" id="detail-modal" onclick="closeDetail(event)">
+  <div class="modal" id="detail-content"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DB LAYER — ready for Firebase in v2
+// ═══════════════════════════════════════════
+const DB = {
+  _db: null,
+  async open() {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('restaurant-rater', 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('visits')) {
+          const vs = db.createObjectStore('visits', { keyPath: 'id' });
+          vs.createIndex('date', 'date');
+        }
+        if (!db.objectStoreNames.contains('people')) {
+          db.createObjectStore('people', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('config')) {
+          db.createObjectStore('config', { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = e => { this._db = e.target.result; res(); };
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async getAll(store) {
+    return new Promise((res, rej) => {
+      const tx = this._db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async put(store, obj) {
+    return new Promise((res, rej) => {
+      const tx = this._db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).put(obj);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async delete(store, id) {
+    return new Promise((res, rej) => {
+      const tx = this._db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).delete(id);
+      req.onsuccess = () => res();
+      req.onerror = () => rej(req.error);
+    });
+  }
+};
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let people = [];
+let visits = [];
+let wizardData = {};
+let wizardStep = 0;
+
+const CATEGORIES = [
+  'Española','Italiana','Japonesa','Mexicana','Francesa',
+  'Griega','Libanesa','India','China','Tailandesa','Americana',
+  'Árabe','Peruana','Brasileña','Turca','Hamburguesería',
+  'Pizzería','Kebab','Sushi','Mariscos','Vegetariana','Coctelería','Otro'
+];
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+async function init() {
+  await DB.open();
+  people = await DB.getAll('people');
+  visits = await DB.getAll('visits');
+
+  // seed default people if empty
+  if (people.length === 0) {
+    const defaults = ['Yo','Ana','Carlos','María','Luis','Sara','Pablo','Laura'];
+    for (const name of defaults) {
+      const p = { id: crypto.randomUUID(), name, createdAt: Date.now() };
+      await DB.put('people', p);
+      people.push(p);
+    }
+  }
+
+  renderHome();
+  renderPeopleSettings();
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function goScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'ranking') renderRanking();
+  if (name === 'home') renderHome();
+  if (name === 'settings') renderPeopleSettings();
+}
+
+// ═══════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════
+function renderHome() {
+  const list = document.getElementById('home-list');
+  const sub = document.getElementById('home-subtitle');
+  sub.textContent = visits.length + ' restaurante' + (visits.length !== 1 ? 's' : '') + ' puntuado' + (visits.length !== 1 ? 's' : '');
+
+  if (visits.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🍴</div><p>Todavía no hay visitas.<br>Pulsa + para empezar.</p></div>';
+    return;
+  }
+
+  const sorted = [...visits].sort((a, b) => b.date - a.date);
+  list.innerHTML = sorted.map(v => {
+    const score = calcFinalScore(v);
+    const dateStr = new Date(v.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    const chooser = people.find(p => p.id === v.chooserId);
+    return `<div class="card" style="cursor:pointer;" onclick="showDetail('${v.id}')">
+      <div class="flex items-center justify-between">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.restaurantName}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px;">${v.category} · ${dateStr}</div>
+          ${chooser ? `<div style="font-size:12px;color:var(--text3);">Eligió: ${chooser.name}</div>` : ''}
+          <div style="font-size:12px;color:var(--text3);">${v.diners.length} comensal${v.diners.length !== 1 ? 'es' : ''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:32px;font-weight:900;color:var(--accent);letter-spacing:-2px;">${score.toFixed(2)}</div>
+          <div style="font-size:10px;color:var(--text3);">/ 10</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// SCORING CALC
+// ═══════════════════════════════════════════
+function calcFinalScore(visit) {
+  // Entrantes: media de (media por plato) promediada entre todos los comensales
+  let starterScore = 0;
+  if (visit.starters && visit.starters.length > 0) {
+    const plateScores = visit.starters.map(plate => {
+      const scores = Object.values(plate.scores).map(Number).filter(n => !isNaN(n));
+      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    });
+    starterScore = plateScores.reduce((a, b) => a + b, 0) / plateScores.length;
+  }
+
+  // Principales
+  let mainScore = 0;
+  if (visit.mains && visit.mains.length > 0) {
+    const plateScores = visit.mains.map(plate => {
+      const scores = Object.values(plate.scores).map(Number).filter(n => !isNaN(n));
+      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    });
+    mainScore = plateScores.reduce((a, b) => a + b, 0) / plateScores.length;
+  }
+
+  // Postres
+  let dessertScore = 0;
+  const hasDessert = visit.desserts && visit.desserts.length > 0;
+  if (hasDessert) {
+    const plateScores = visit.desserts.map(plate => {
+      const scores = Object.values(plate.scores).map(Number).filter(n => !isNaN(n));
+      return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    });
+    dessertScore = plateScores.reduce((a, b) => a + b, 0) / plateScores.length;
+  }
+
+  // Pesos
+  let wStarter, wMain, wDessert;
+  if (hasDessert) { wStarter = 0.25; wMain = 0.50; wDessert = 0.25; }
+  else { wStarter = 0.33; wMain = 0.67; wDessert = 0; }
+
+  const baseScore = starterScore * wStarter + mainScore * wMain + dessertScore * wDessert;
+
+  // Servicio y precio: media del delta de todos los comensales
+  let adjustService = 0, adjustPrice = 0;
+  if (visit.adjustments) {
+    const adjValues = Object.values(visit.adjustments);
+    if (adjValues.length > 0) {
+      adjustService = adjValues.reduce((a, b) => a + (b.service || 0), 0) / adjValues.length;
+      adjustPrice = adjValues.reduce((a, b) => a + (b.price || 0), 0) / adjValues.length;
+    }
+  }
+
+  return Math.max(0, Math.min(10, baseScore + adjustService + adjustPrice));
+}
+
+// ═══════════════════════════════════════════
+// WIZARD
+// ═══════════════════════════════════════════
+const TOTAL_STEPS = 6;
+
+function startNewVisit() {
+  wizardData = {
+    id: crypto.randomUUID(),
+    date: Date.now(),
+    restaurantName: '',
+    category: '',
+    chooserId: null,
+    diners: [],
+    starterCount: 1,
+    mainShared: false,
+    mainCount: 1,
+    hasDessert: true,
+    dessertCount: 1,
+    starters: [],
+    mains: [],
+    desserts: [],
+    adjustments: {},
+    pricePerPerson: null,
+    note: ''
+  };
+  wizardStep = 0;
+  goScreen('new');
+  renderWizardStep();
+}
+
+function cancelNew() {
+  if (confirm('¿Cancelar la puntuación?')) goScreen('home');
+}
+
+function updateStepIndicator() {
+  for (let i = 0; i < TOTAL_STEPS; i++) {
+    const dot = document.getElementById('dot-' + i);
+    if (!dot) continue;
+    dot.className = 'step-dot ' + (i < wizardStep ? 'done' : i === wizardStep ? 'active' : '');
+  }
+  document.getElementById('step-label').textContent = (wizardStep + 1) + ' / ' + TOTAL_STEPS;
+  const titles = ['Restaurante','Comensales','Entrantes','Principales','Postres','Ajustes'];
+  document.getElementById('wizard-title').textContent = titles[wizardStep] || 'Nueva visita';
+}
+
+function renderWizardStep() {
+  updateStepIndicator();
+  const content = document.getElementById('wizard-content');
+  const nextBtn = document.getElementById('wizard-next-btn');
+
+  switch (wizardStep) {
+    case 0: renderStep0(content, nextBtn); break;
+    case 1: renderStep1(content, nextBtn); break;
+    case 2: renderStep2(content, nextBtn); break;
+    case 3: renderStep3(content, nextBtn); break;
+    case 4: renderStep4(content, nextBtn); break;
+    case 5: renderStep5(content, nextBtn); break;
+  }
+}
+
+// STEP 0: Info restaurante
+function renderStep0(el, btn) {
+  btn.textContent = 'Siguiente →';
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">Información</div>
+      <div class="field">
+        <label>Nombre del restaurante *</label>
+        <input type="text" id="s0-name" placeholder="Ej: La Pepita" value="${wizardData.restaurantName}">
+      </div>
+      <div class="field">
+        <label>Categoría *</label>
+        <select id="s0-cat">
+          <option value="">Selecciona categoría</option>
+          ${CATEGORIES.map(c => `<option value="${c}" ${wizardData.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>¿Quién ha elegido el restaurante?</label>
+        <select id="s0-chooser">
+          <option value="">Sin especificar</option>
+          ${people.map(p => `<option value="${p.id}" ${wizardData.chooserId === p.id ? 'selected' : ''}>${p.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+}
+
+// STEP 1: Comensales
+function renderStep1(el, btn) {
+  btn.textContent = 'Siguiente →';
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">¿Quién está en la mesa?</div>
+      <p class="text-muted mt-8" style="margin-bottom:14px;">Selecciona todos los comensales</p>
+      <div class="chips" id="s1-chips">
+        ${people.map(p => `<div class="chip ${wizardData.diners.includes(p.id) ? 'selected' : ''}" onclick="toggleDiner('${p.id}',this)">${p.name}</div>`).join('')}
+      </div>
+    </div>
+    <div class="card" style="margin-top:8px;">
+      <div style="font-size:13px;color:var(--text2);">Seleccionados: <span id="diner-count" style="color:var(--accent);font-weight:700;">${wizardData.diners.length}</span></div>
+    </div>`;
+}
+
+function toggleDiner(id, el) {
+  if (wizardData.diners.includes(id)) {
+    wizardData.diners = wizardData.diners.filter(d => d !== id);
+    el.classList.remove('selected');
+  } else {
+    wizardData.diners.push(id);
+    el.classList.add('selected');
+  }
+  document.getElementById('diner-count').textContent = wizardData.diners.length;
+}
+
+// STEP 2: Entrantes
+function renderStep2(el, btn) {
+  btn.textContent = 'Siguiente →';
+  // Init starters if needed
+  while (wizardData.starters.length < wizardData.starterCount) {
+    wizardData.starters.push({ id: crypto.randomUUID(), name: 'Entrante ' + (wizardData.starters.length + 1), scores: {} });
+  }
+  wizardData.starters = wizardData.starters.slice(0, wizardData.starterCount);
+
+  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">Número de entrantes</div>
+      </div>
+      <div class="stepper">
+        <button onclick="changeCount('starter',-1)">−</button>
+        <span id="starter-count-val">${wizardData.starterCount}</span>
+        <button onclick="changeCount('starter',1)">+</button>
+      </div>
+    </div>
+    ${wizardData.starters.map((plate, pi) => `
+    <div class="card" id="starter-card-${pi}">
+      <div class="section-header">
+        <input type="text" value="${plate.name}" style="background:transparent;border:none;font-size:15px;font-weight:600;color:var(--text);padding:0;width:auto;flex:1;" onchange="wizardData.starters[${pi}].name=this.value">
+      </div>
+      <hr class="score-divider">
+      ${dinersInfo.map(p => `
+      <div class="score-row">
+        <div class="score-label">${p.name}</div>
+        <div class="score-slider-wrap">
+          <input type="range" min="0" max="10" step="0.5" value="${plate.scores[p.id] ?? 5}"
+            oninput="wizardData.starters[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
+          <div class="score-val">${(plate.scores[p.id] ?? 5).toFixed(1)}</div>
+        </div>
+      </div>`).join('')}
+    </div>`).join('')}`;
+}
+
+// STEP 3: Principales
+function renderStep3(el, btn) {
+  btn.textContent = 'Siguiente →';
+  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+
+  // Ensure mains
+  const targetCount = wizardData.mainShared ? wizardData.mainCount : wizardData.diners.length;
+  while (wizardData.mains.length < targetCount) {
+    wizardData.mains.push({ id: crypto.randomUUID(), name: wizardData.mainShared ? 'Principal ' + (wizardData.mains.length + 1) : 'Principal de ' + (dinersInfo[wizardData.mains.length]?.name || ''), scores: {} });
+  }
+  wizardData.mains = wizardData.mains.slice(0, targetCount);
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">Tipo de principales</div>
+      <div class="toggle-group">
+        <button class="toggle-opt ${!wizardData.mainShared ? 'active' : ''}" onclick="setMainMode(false)">Individuales</button>
+        <button class="toggle-opt ${wizardData.mainShared ? 'active' : ''}" onclick="setMainMode(true)">Compartidos</button>
+      </div>
+      ${wizardData.mainShared ? `<div class="stepper mt-12">
+        <button onclick="changeCount('main',-1)">−</button>
+        <span id="main-count-val">${wizardData.mainCount}</span>
+        <button onclick="changeCount('main',1)">+</button>
+      </div>` : ''}
+    </div>
+    ${wizardData.mains.map((plate, pi) => {
+      const assignedDiner = !wizardData.mainShared ? dinersInfo[pi] : null;
+      return `<div class="card" id="main-card-${pi}">
+        <div class="section-header">
+          <input type="text" value="${plate.name}" style="background:transparent;border:none;font-size:15px;font-weight:600;color:var(--text);padding:0;width:100%;" onchange="wizardData.mains[${pi}].name=this.value">
+        </div>
+        <hr class="score-divider">
+        ${wizardData.mainShared
+          ? dinersInfo.map(p => `<div class="score-row">
+              <div class="score-label">${p.name}</div>
+              <div class="score-slider-wrap">
+                <input type="range" min="0" max="10" step="0.5" value="${plate.scores[p.id] ?? 5}"
+                  oninput="wizardData.mains[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
+                <div class="score-val">${(plate.scores[p.id] ?? 5).toFixed(1)}</div>
+              </div>
+            </div>`).join('')
+          : assignedDiner ? `<div class="score-row">
+              <div class="score-label">${assignedDiner.name}</div>
+              <div class="score-slider-wrap">
+                <input type="range" min="0" max="10" step="0.5" value="${plate.scores[assignedDiner.id] ?? 5}"
+                  oninput="wizardData.mains[${pi}].scores['${assignedDiner.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
+                <div class="score-val">${(plate.scores[assignedDiner.id] ?? 5).toFixed(1)}</div>
+              </div>
+            </div>` : ''}
+      </div>`;
+    }).join('')}`;
+}
+
+function setMainMode(shared) {
+  wizardData.mainShared = shared;
+  wizardData.mains = [];
+  if (shared) wizardData.mainCount = 2;
+  renderWizardStep();
+}
+
+// STEP 4: Postres
+function renderStep4(el, btn) {
+  btn.textContent = 'Siguiente →';
+  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+
+  if (!wizardData.hasDessert) {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">Postres</div>
+        <div class="toggle-group">
+          <button class="toggle-opt active" onclick="setDessert(true)">Con postres</button>
+          <button class="toggle-opt" onclick="setDessert(false)">Sin postres</button>
+        </div>
+        <p class="text-muted mt-12">Sin postres: pesos redistribuidos (33% entrantes / 67% principal)</p>
+      </div>`;
+    return;
+  }
+
+  while (wizardData.desserts.length < wizardData.dessertCount) {
+    wizardData.desserts.push({ id: crypto.randomUUID(), name: 'Postre ' + (wizardData.desserts.length + 1), scores: {} });
+  }
+  wizardData.desserts = wizardData.desserts.slice(0, wizardData.dessertCount);
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">Postres</div>
+      <div class="toggle-group">
+        <button class="toggle-opt active" onclick="setDessert(true)">Con postres</button>
+        <button class="toggle-opt" onclick="setDessert(false)">Sin postres</button>
+      </div>
+      <div class="stepper mt-12">
+        <button onclick="changeCount('dessert',-1)">−</button>
+        <span id="dessert-count-val">${wizardData.dessertCount}</span>
+        <button onclick="changeCount('dessert',1)">+</button>
+      </div>
+    </div>
+    ${wizardData.desserts.map((plate, pi) => `
+    <div class="card" id="dessert-card-${pi}">
+      <div class="section-header">
+        <input type="text" value="${plate.name}" style="background:transparent;border:none;font-size:15px;font-weight:600;color:var(--text);padding:0;width:100%;" onchange="wizardData.desserts[${pi}].name=this.value">
+      </div>
+      <hr class="score-divider">
+      ${dinersInfo.map(p => `
+      <div class="score-row">
+        <div class="score-label">${p.name}</div>
+        <div class="score-slider-wrap">
+          <input type="range" min="0" max="10" step="0.5" value="${plate.scores[p.id] ?? 5}"
+            oninput="wizardData.desserts[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(1)">
+          <div class="score-val">${(plate.scores[p.id] ?? 5).toFixed(1)}</div>
+        </div>
+      </div>`).join('')}
+    </div>`).join('')}`;
+}
+
+function setDessert(has) {
+  wizardData.hasDessert = has;
+  if (!has) wizardData.desserts = [];
+  renderWizardStep();
+}
+
+// STEP 5: Ajustes finales
+function renderStep5(el, btn) {
+  btn.textContent = '💾 Guardar visita';
+  const dinersInfo = wizardData.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+
+  // Init adjustments
+  dinersInfo.forEach(p => {
+    if (!wizardData.adjustments[p.id]) wizardData.adjustments[p.id] = { service: 0, price: 0 };
+  });
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">Servicio (± 0.75 pts)</div>
+      ${dinersInfo.map(p => `
+      <div class="score-row">
+        <div class="score-label">${p.name}</div>
+        <div class="score-slider-wrap">
+          <input type="range" min="-0.75" max="0.75" step="0.25" value="${wizardData.adjustments[p.id]?.service ?? 0}"
+            oninput="wizardData.adjustments['${p.id}'].service=parseFloat(this.value);updateAdjDisplay('svc-${p.id}',this.value)">
+          <div class="score-val" id="svc-${p.id}">${adjDisplay(wizardData.adjustments[p.id]?.service ?? 0)}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">Precio (± 1.5 pts)</div>
+      ${dinersInfo.map(p => `
+      <div class="score-row">
+        <div class="score-label">${p.name}</div>
+        <div class="score-slider-wrap">
+          <input type="range" min="-1.5" max="1.5" step="0.5" value="${wizardData.adjustments[p.id]?.price ?? 0}"
+            oninput="wizardData.adjustments['${p.id}'].price=parseFloat(this.value);updateAdjDisplay('prc-${p.id}',this.value)">
+          <div class="score-val" id="prc-${p.id}">${adjDisplay(wizardData.adjustments[p.id]?.price ?? 0)}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">Detalles adicionales</div>
+      <div class="field">
+        <label>Precio por persona (€)</label>
+        <input type="number" id="s5-price" placeholder="Ej: 25" min="0" value="${wizardData.pricePerPerson || ''}">
+      </div>
+      <div class="field">
+        <label>Nota rápida</label>
+        <textarea id="s5-note" placeholder="Lo que más destacó de la visita...">${wizardData.note || ''}</textarea>
+      </div>
+    </div>`;
+}
+
+function adjDisplay(val) {
+  const v = parseFloat(val);
+  if (v > 0) return '+' + v.toFixed(2);
+  if (v < 0) return v.toFixed(2);
+  return '0.00';
+}
+
+function updateAdjDisplay(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = adjDisplay(val);
+}
+
+function changeCount(type, delta) {
+  if (type === 'starter') {
+    wizardData.starterCount = Math.max(1, wizardData.starterCount + delta);
+    wizardData.starters = [];
+    renderWizardStep();
+  } else if (type === 'main') {
+    wizardData.mainCount = Math.max(1, wizardData.mainCount + delta);
+    wizardData.mains = [];
+    renderWizardStep();
+  } else if (type === 'dessert') {
+    wizardData.dessertCount = Math.max(1, wizardData.dessertCount + delta);
+    wizardData.desserts = [];
+    renderWizardStep();
+  }
+}
+
+async function wizardNext() {
+  // Validation and data collection per step
+  if (wizardStep === 0) {
+    const name = document.getElementById('s0-name')?.value.trim();
+    const cat = document.getElementById('s0-cat')?.value;
+    if (!name) { alert('Introduce el nombre del restaurante'); return; }
+    if (!cat) { alert('Selecciona una categoría'); return; }
+    wizardData.restaurantName = name;
+    wizardData.category = cat;
+    wizardData.chooserId = document.getElementById('s0-chooser')?.value || null;
+  }
+
+  if (wizardStep === 1) {
+    if (wizardData.diners.length === 0) { alert('Selecciona al menos un comensal'); return; }
+  }
+
+  if (wizardStep === 5) {
+    // Save
+    const priceVal = document.getElementById('s5-price')?.value;
+    wizardData.pricePerPerson = priceVal ? parseFloat(priceVal) : null;
+    wizardData.note = document.getElementById('s5-note')?.value.trim() || '';
+
+    await DB.put('visits', wizardData);
+    visits = await DB.getAll('visits');
+    renderHome();
+    goScreen('home');
+    showResult(wizardData);
+    return;
+  }
+
+  wizardStep++;
+  renderWizardStep();
+}
+
+// ═══════════════════════════════════════════
+// RESULT SUMMARY
+// ═══════════════════════════════════════════
+function showResult(visit) {
+  const score = calcFinalScore(visit);
+  const modal = document.getElementById('detail-modal');
+  const content = document.getElementById('detail-content');
+  content.innerHTML = buildDetailHTML(visit, score, true);
+  modal.classList.add('open');
+}
+
+function buildDetailHTML(visit, score, isNew) {
+  const chooser = people.find(p => p.id === visit.chooserId);
+  const dateStr = new Date(visit.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+  const dinersInfo = visit.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+
+  // Breakdown scores
+  let starterAvg = 0, mainAvg = 0, dessertAvg = 0;
+  if (visit.starters?.length) {
+    const plateScores = visit.starters.map(p => { const s = Object.values(p.scores).map(Number).filter(n=>!isNaN(n)); return s.length ? s.reduce((a,b)=>a+b,0)/s.length : 0; });
+    starterAvg = plateScores.reduce((a,b)=>a+b,0)/plateScores.length;
+  }
+  if (visit.mains?.length) {
+    const plateScores = visit.mains.map(p => { const s = Object.values(p.scores).map(Number).filter(n=>!isNaN(n)); return s.length ? s.reduce((a,b)=>a+b,0)/s.length : 0; });
+    mainAvg = plateScores.reduce((a,b)=>a+b,0)/plateScores.length;
+  }
+  if (visit.desserts?.length) {
+    const plateScores = visit.desserts.map(p => { const s = Object.values(p.scores).map(Number).filter(n=>!isNaN(n)); return s.length ? s.reduce((a,b)=>a+b,0)/s.length : 0; });
+    dessertAvg = plateScores.reduce((a,b)=>a+b,0)/plateScores.length;
+  }
+
+  return `
+    <h3>${isNew ? '✅ Visita guardada' : visit.restaurantName}</h3>
+    <div class="result-score">
+      <div class="result-big">${score.toFixed(2)}</div>
+      <div class="result-label">${visit.restaurantName} · ${visit.category}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;">${dateStr} · ${dinersInfo.length} comensales</div>
+    </div>
+    <div class="result-grid">
+      <div class="result-mini">
+        <div class="result-mini-val">${starterAvg.toFixed(1)}</div>
+        <div class="result-mini-lbl">Entrantes</div>
+      </div>
+      <div class="result-mini">
+        <div class="result-mini-val">${mainAvg.toFixed(1)}</div>
+        <div class="result-mini-lbl">Principales</div>
+      </div>
+      <div class="result-mini">
+        <div class="result-mini-val">${visit.desserts?.length ? dessertAvg.toFixed(1) : '—'}</div>
+        <div class="result-mini-lbl">Postres</div>
+      </div>
+    </div>
+    ${chooser ? `<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">Eligió: <span style="color:var(--text2)">${chooser.name}</span></div>` : ''}
+    ${visit.pricePerPerson ? `<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">Precio/persona: <span style="color:var(--accent)">€${visit.pricePerPerson}</span></div>` : ''}
+    ${visit.note ? `<div style="background:var(--bg3);border-radius:var(--r2);padding:12px;font-size:13px;color:var(--text2);margin-bottom:12px;">💬 "${visit.note}"</div>` : ''}
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeDetail()">Cerrar</button>
+      ${!isNew ? `<button class="btn btn-danger btn-sm" style="flex:0.5;" onclick="deleteVisit('${visit.id}')">Borrar</button>` : ''}
+    </div>`;
+}
+
+function showDetail(id) {
+  const visit = visits.find(v => v.id === id);
+  if (!visit) return;
+  const score = calcFinalScore(visit);
+  const modal = document.getElementById('detail-modal');
+  const content = document.getElementById('detail-content');
+  content.innerHTML = buildDetailHTML(visit, score, false);
+  modal.classList.add('open');
+}
+
+function closeDetail(e) {
+  if (!e || e.target === document.getElementById('detail-modal')) {
+    document.getElementById('detail-modal').classList.remove('open');
+  }
+}
+
+async function deleteVisit(id) {
+  if (!confirm('¿Borrar esta visita?')) return;
+  await DB.delete('visits', id);
+  visits = await DB.getAll('visits');
+  closeDetail();
+  renderHome();
+}
+
+// ═══════════════════════════════════════════
+// RANKING
+// ═══════════════════════════════════════════
+let activeTab = 'global';
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['global','category','chooser'][i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  renderRanking();
+}
+
+function renderRanking() {
+  renderTabGlobal();
+  renderTabCategory();
+  renderTabChooser();
+}
+
+function rankNumClass(i) {
+  if (i === 0) return 'gold'; if (i === 1) return 'silver'; if (i === 2) return 'bronze'; return '';
+}
+
+function renderTabGlobal() {
+  const el = document.getElementById('tab-global');
+  if (visits.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><p>Sin datos todavía</p></div>'; return; }
+
+  const scored = visits.map(v => ({ ...v, score: calcFinalScore(v) })).sort((a, b) => b.score - a.score);
+  el.innerHTML = '<div class="card" style="margin-top:4px;">' + scored.map((v, i) => {
+    const dinersInfo = v.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+    return `<div class="rank-item" onclick="showDetail('${v.id}')" style="cursor:pointer;">
+      <div class="rank-num ${rankNumClass(i)}">${i + 1}</div>
+      <div class="rank-info">
+        <div class="rank-name">${v.restaurantName}</div>
+        <div class="rank-sub">${v.category} · ${dinersInfo.length} comensal${dinersInfo.length !== 1 ? 'es' : ''}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="rank-score">${v.score.toFixed(2)}</div>
+        <div class="rank-score-sm">/ 10</div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function renderTabCategory() {
+  const el = document.getElementById('tab-category');
+  if (visits.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">🍕</div><p>Sin datos todavía</p></div>'; return; }
+
+  const byCat = {};
+  visits.forEach(v => {
+    if (!byCat[v.category]) byCat[v.category] = [];
+    byCat[v.category].push({ ...v, score: calcFinalScore(v) });
+  });
+
+  let html = '';
+  Object.entries(byCat).sort(([,a],[,b]) => {
+    const avgA = a.reduce((s,v)=>s+v.score,0)/a.length;
+    const avgB = b.reduce((s,v)=>s+v.score,0)/b.length;
+    return avgB - avgA;
+  }).forEach(([cat, catVisits]) => {
+    const sorted = catVisits.sort((a, b) => b.score - a.score);
+    const avg = sorted.reduce((s, v) => s + v.score, 0) / sorted.length;
+    html += `<div style="margin-bottom:8px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:12px 4px 6px;">
+        ${cat} <span style="color:var(--accent)">· avg ${avg.toFixed(2)}</span>
+      </div>
+      <div class="card" style="padding:8px 16px;">
+        ${sorted.map((v, i) => {
+          const dinersInfo = v.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+          return `<div class="rank-item" onclick="showDetail('${v.id}')" style="cursor:pointer;">
+            <div class="rank-num ${rankNumClass(i)}">${i + 1}</div>
+            <div class="rank-info">
+              <div class="rank-name">${v.restaurantName}</div>
+              <div class="rank-sub">${dinersInfo.length} comensales</div>
+            </div>
+            <div class="rank-score" style="font-size:17px;">${v.score.toFixed(2)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderTabChooser() {
+  const el = document.getElementById('tab-chooser');
+  if (visits.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>Sin datos todavía</p></div>'; return; }
+
+  const byChooser = {};
+  visits.forEach(v => {
+    if (!v.chooserId) return;
+    if (!byChooser[v.chooserId]) byChooser[v.chooserId] = [];
+    byChooser[v.chooserId].push({ ...v, score: calcFinalScore(v) });
+  });
+
+  if (Object.keys(byChooser).length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>Ninguna visita tiene elector asignado</p></div>';
+    return;
+  }
+
+  const stats = Object.entries(byChooser).map(([pid, pvs]) => {
+    const avg = pvs.reduce((s, v) => s + v.score, 0) / pvs.length;
+    const best = pvs.reduce((a, b) => a.score > b.score ? a : b);
+    const person = people.find(p => p.id === pid);
+    return { person, avg, count: pvs.length, best };
+  }).filter(s => s.person).sort((a, b) => b.avg - a.avg);
+
+  el.innerHTML = '<div class="card" style="margin-top:4px;">' + stats.map((s, i) => `
+    <div class="rank-item">
+      <div class="rank-num ${rankNumClass(i)}">${i + 1}</div>
+      <div class="rank-info">
+        <div class="rank-name">${s.person.name}</div>
+        <div class="rank-sub">${s.count} elección${s.count !== 1 ? 'es' : ''} · ⭐ ${s.best.restaurantName}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="rank-score">${s.avg.toFixed(2)}</div>
+        <div class="rank-score-sm">/ 10</div>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+// ═══════════════════════════════════════════
+// PEOPLE MANAGER
+// ═══════════════════════════════════════════
+function renderPeopleSettings() {
+  const el = document.getElementById('people-list-settings');
+  if (people.length === 0) {
+    el.innerHTML = '<p class="text-muted">No hay personas todavía.</p>';
+    return;
+  }
+  el.innerHTML = people.map(p => `
+    <div class="flex items-center justify-between" style="padding:10px 0;border-bottom:0.5px solid var(--border);">
+      <span style="font-size:15px;">${p.name}</span>
+      <button class="btn btn-danger btn-sm" onclick="deletePerson('${p.id}')">Eliminar</button>
+    </div>`).join('');
+}
+
+async function addPerson() {
+  const input = document.getElementById('new-person-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (people.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+    alert('Ya existe una persona con ese nombre'); return;
+  }
+  const person = { id: crypto.randomUUID(), name, createdAt: Date.now() };
+  await DB.put('people', person);
+  people.push(person);
+  input.value = '';
+  renderPeopleSettings();
+}
+
+async function deletePerson(id) {
+  const inUse = visits.some(v => v.diners.includes(id) || v.chooserId === id);
+  if (inUse) { alert('Esta persona aparece en visitas guardadas y no puede eliminarse.'); return; }
+  if (!confirm('¿Eliminar esta persona?')) return;
+  await DB.delete('people', id);
+  people = people.filter(p => p.id !== id);
+  renderPeopleSettings();
+}
+
+// ═══════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+init();
+</script>
+</body>
+</html>
