@@ -362,24 +362,23 @@ function calcBreakdown(visit) {
   const wD = hasDessert ? 0.25 : 0.00;
   const base = sScore * wS + mScore * wM + (dScore !== null ? dScore * wD : 0);
 
-  // AJUSTES: suma directa (NO media) de los deltas
-  // Cada comensal aporta su delta, sumamos todos, dividimos por número de comensales
-  let totalSvc = 0, totalPrc = 0;
+  // AJUSTES: media de los deltas de todos los comensales
+  let adjSvc = 0, adjPrc = 0;
   if (visit.adjustments && Object.keys(visit.adjustments).length > 0) {
+    let totalSvc = 0, totalPrc = 0;
     Object.values(visit.adjustments).forEach(adj => {
       totalSvc += parseFloat(adj.service) || 0;
       totalPrc += parseFloat(adj.price) || 0;
     });
     const adjCount = Object.keys(visit.adjustments).length;
-    // AQUÍ ESTÁ EL BUG: NO dividimos entre adjCount
-    // Cada persona aporta su delta, se suma y YA
-    // Si uno pone +0.75 y otro +0.75, da +1.5 total, no +0.75 de media
+    adjSvc = totalSvc / adjCount;
+    adjPrc = totalPrc / adjCount;
   }
 
-  // Nota final: base + suma de ajustes
-  const final = base + totalSvc + totalPrc;
+  // Nota final: base + media de ajustes
+  const final = base + adjSvc + adjPrc;
 
-  return { sScore, mScore, dScore, hasDessert, adjSvc: totalSvc, adjPrc: totalPrc, base, final };
+  return { sScore, mScore, dScore, hasDessert, adjSvc, adjPrc, base, final };
 }
 
 function calcFinalScore(visit) {
@@ -580,17 +579,19 @@ function renderStep5(el) {
 
 // ─── PLATE CARD ───
 function plateCard(plate, pi, store, diners) {
-  // Initialize all diner scores to DEFAULT if not set — THIS IS THE FIX
+  // Initialize all diner scores to DEFAULT if not set
   diners.forEach(p => { if (plate.scores[p.id] === undefined) plate.scores[p.id] = DEFAULT_SCORE; });
   return `<div class="card">
     <input type="text" value="${esc(plate.name)}" style="background:transparent;border:none;border-bottom:0.5px solid var(--border);font-size:15px;font-weight:600;color:var(--text);padding:0 0 8px;width:100%;margin-bottom:8px;outline:none;font-family:inherit;" onchange="wizardData.${store}[${pi}].name=this.value">
     ${diners.map(p=>{
-      const val = parseFloat(plate.scores[p.id]);
+      const val = parseFloat(plate.scores[p.id]) || DEFAULT_SCORE;
       return `<div class="score-row">
         <div class="score-label">${p.name}</div>
         <div class="score-slider-wrap">
+          <button style="background:var(--bg2);border:0.5px solid var(--border2);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;padding:0;" onclick="adjustScore('${store}',${pi},'${p.id}',-0.05)">−</button>
           <input type="range" min="0" max="10" step="${STEP}" value="${val}"
-            oninput="wizardData.${store}[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)">
+            oninput="wizardData.${store}[${pi}].scores['${p.id}']=parseFloat(this.value);this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)" style="margin:0 6px;">
+          <button style="background:var(--bg2);border:0.5px solid var(--border2);color:var(--text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;padding:0;" onclick="adjustScore('${store}',${pi},'${p.id}',0.05)">+</button>
           <div class="score-val">${val.toFixed(2)}</div>
         </div></div>`;
     }).join('')}
@@ -599,12 +600,22 @@ function plateCard(plate, pi, store, diners) {
 
 // ─── HELPERS ───
 function syncPlates(store, count, prefix, diners) {
+  // Preserve existing scores when resizing
   while (wizardData[store].length < count) {
     const i = wizardData[store].length;
     const name = prefix ? (prefix + ' ' + (i+1)) : (diners && diners[i] ? 'Principal de ' + diners[i].name : 'Principal ' + (i+1));
     wizardData[store].push({ id: crypto.randomUUID(), name, scores:{} });
   }
   wizardData[store] = wizardData[store].slice(0, count);
+  // Ensure all plates have scores for their diners
+  if (diners) {
+    wizardData[store].forEach((plate, idx) => {
+      const assignedDiner = diners[idx];
+      if (assignedDiner && plate.scores[assignedDiner.id] === undefined) {
+        plate.scores[assignedDiner.id] = DEFAULT_SCORE;
+      }
+    });
+  }
 }
 function getDiners() { return wizardData.diners.map(id=>people.find(p=>p.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name)); }
 function changeCount(t, d) {
@@ -665,7 +676,7 @@ function buildDetail(visit, isNew) {
     <div class="result-big" style="color:${sc}">${bd.final.toFixed(2)}</div>
     <div class="result-label" style="font-weight:600;color:var(--text);font-size:15px;">${esc(visit.restaurantName)}</div>
     <div class="result-label">${visit.category} · ${dateStr}</div>
-    <div class="result-label">${diners.length} comensal${diners.length!==1?'es':''}</div>
+    <div class="result-label" style="font-size:13px;color:var(--text3);">${diners.map(d=>d.name).join(', ')}</div>
   </div>
   <div class="result-grid">
     <div class="result-mini"><div class="result-mini-val">${bd.sScore.toFixed(2)}</div><div class="result-mini-lbl">Entrantes</div></div>
@@ -893,6 +904,21 @@ function showChooserDetail(chooserId) {
   
   document.getElementById('detail-content').innerHTML = html;
   document.getElementById('detail-modal').classList.add('open');
+}
+
+
+
+function adjustScore(store, plateIdx, dinerId, delta) {
+  const plate = wizardData[store][plateIdx];
+  const current = parseFloat(plate.scores[dinerId]) || DEFAULT_SCORE;
+  const newVal = Math.max(0, Math.min(10, Math.round((current + delta) * 100) / 100));
+  plate.scores[dinerId] = newVal;
+  // Actualizar UI
+  const event = new Event('change', { bubbles: true });
+  document.querySelectorAll(`input[type="range"]`).forEach(inp => {
+    if (inp.value === String(current)) inp.value = newVal;
+    inp.nextElementSibling.textContent = newVal.toFixed(2);
+  });
 }
 
 
