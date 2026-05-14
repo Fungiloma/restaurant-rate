@@ -242,8 +242,9 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
       </div>
       <div class="card" style="border-color:var(--danger);">
         <div class="card-title" style="color:var(--danger);">Zona de peligro</div>
-        <p class="text-muted" style="margin-bottom:12px;">Borra todos los restaurantes, comensales y datos de la nube. Esta acción no se puede deshacer.</p>
-        <button class="btn btn-danger" onclick="confirmResetAll()">🗑️ Borrar todos los datos</button>
+        <p class="text-muted" style="margin-bottom:12px;">Borra restaurantes o personas de este dispositivo y de la nube. Esta acción no se puede deshacer.</p>
+        <button class="btn btn-danger" style="margin-bottom:10px;width:100%;" onclick="confirmResetVisits()">🗑️ Borrar todos los restaurantes</button>
+        <button class="btn btn-danger" style="width:100%;" onclick="confirmResetPeople()">👤 Borrar todas las personas</button>
       </div>
     </div>
   </div>
@@ -483,21 +484,11 @@ async function init() {
   await DB.open();
   people = await DB.getAll('people');
   visits = await DB.getAll('visits');
-  // Solo sembrar comensales por defecto si:
-  // 1. No hay personas en local
-  // 2. Y nunca se ha sincronizado antes (primer arranque absoluto)
-  const everSynced = localStorage.getItem('rater-ever-synced');
-  if (people.length === 0 && !everSynced) {
-    for (const name of ['Ana','Carlos','Laura','Luis','María','Pablo','Sara','Yo']) {
-      const p = { id: crypto.randomUUID(), name, createdAt: Date.now() };
-      await DB.put('people', p);
-      people.push(p);
-    }
-  }
+  // NUNCA sembrar personas por defecto — siempre vienen de Firebase o las añade el usuario
   people.sort((a,b) => a.name.localeCompare(b.name));
   renderHome();
   renderPeopleSettings();
-  // Auto-sync silencioso al arrancar
+  // Auto-sync al arrancar — descarga personas y visitas de Firebase
   syncWithFirebase(false);
 }
 
@@ -1181,43 +1172,43 @@ async function deletePerson(id) {
 // ═══════════════════════════════════════════════════════
 // EXPORT / IMPORT
 // ═══════════════════════════════════════════════════════
-async function confirmResetAll() {
-  const first = confirm('⚠️ ¿Borrar TODOS los datos?\nEsto eliminará todos los restaurantes y comensales de este dispositivo y de la nube.');
-  if (!first) return;
-  const second = confirm('¿Estás seguro? Esta acción NO se puede deshacer.');
-  if (!second) return;
-  await resetAllData();
-}
-
-async function resetAllData() {
-  showToast('⏳ Borrando todos los datos...');
-
-  // 1. Borrar IndexedDB local
+async function confirmResetVisits() {
+  if (!confirm('⚠️ ¿Borrar TODOS los restaurantes?\nSe eliminarán de este dispositivo y de la nube.')) return;
+  if (!confirm('¿Estás seguro? Esta acción NO se puede deshacer.')) return;
+  showToast('⏳ Borrando restaurantes...');
+  // Local
   const allVisits = await DB.getAll('visits');
   for (const v of allVisits) await DB.delete('visits', v.id);
-  const allPeople = await DB.getAll('people');
-  for (const p of allPeople) await DB.delete('people', p.id);
-
-  // 2. Resetear estado en memoria
   visits = [];
-  people = [];
-
-  // 3. Borrar localStorage
-  localStorage.removeItem('rater-ever-synced');
-
-  // 4. Borrar Firebase completo
+  // Firebase
   const online = await waitForFirebase(3000);
   if (online) {
     try {
       await window._fbRemove('visits');
-      await window._fbRemove('people');
       await window._fbRemove('deleted_visits');
-    } catch(e) { console.warn('Firebase reset error:', e); }
+    } catch(e) { console.warn('Firebase reset visits error:', e); }
   }
-
   renderHome();
+  showToast('✓ Restaurantes borrados');
+}
+
+async function confirmResetPeople() {
+  if (!confirm('⚠️ ¿Borrar TODAS las personas?\nSe eliminarán de este dispositivo y de la nube.')) return;
+  if (!confirm('¿Estás seguro? Esta acción NO se puede deshacer.')) return;
+  showToast('⏳ Borrando personas...');
+  // Local
+  const allPeople = await DB.getAll('people');
+  for (const p of allPeople) await DB.delete('people', p.id);
+  people = [];
+  // Firebase
+  const online = await waitForFirebase(3000);
+  if (online) {
+    try {
+      await window._fbRemove('people');
+    } catch(e) { console.warn('Firebase reset people error:', e); }
+  }
   renderPeopleSettings();
-  showToast('✓ Todos los datos borrados');
+  showToast('✓ Personas borradas');
 }
 
 async function exportAllData() {
