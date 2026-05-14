@@ -240,6 +240,11 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
         <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📤 Importar datos</button>
         <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importAllData(event)">
       </div>
+      <div class="card" style="border-color:var(--danger);">
+        <div class="card-title" style="color:var(--danger);">Zona de peligro</div>
+        <p class="text-muted" style="margin-bottom:12px;">Borra todos los restaurantes, comensales y datos de la nube. Esta acción no se puede deshacer.</p>
+        <button class="btn btn-danger" onclick="confirmResetAll()">🗑️ Borrar todos los datos</button>
+      </div>
     </div>
   </div>
 
@@ -1055,22 +1060,14 @@ function buildDetail(visit, isNew) {
 function closeDetail(e) { if(!e||e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open'); }
 async function deleteVisit(id) {
   if(!confirm('¿Borrar esta visita?')) return;
-  await DB.delete('visits',id);
-  visits=await DB.getAll('visits');
-  // Eliminar en Firebase también
-  deleteVisitFromFirebase(id).then(() => {
-    // Pull desde Firebase para asegurar que no reaparece
-    waitForFirebase(2000).then(online => {
-      if(online) {
-        window._fbGet('/visits').then(snapshot => {
-          const remote = snapshot.exists() ? Object.values(snapshot.val()||{}) : [];
-          visits = remote;
-          renderHome();
-        }).catch(e => console.warn('Post-delete sync:', e));
-      }
-    });
-  });
-  closeDetail(); renderHome();
+  // 1. Borrar de IndexedDB local
+  await DB.delete('visits', id);
+  visits = visits.filter(v => v.id !== id);
+  // 2. Borrar de Firebase + escribir tombstone
+  deleteVisitFromFirebase(id);
+  closeDetail();
+  renderHome();
+  showToast('Restaurante eliminado');
 }
 
 // ═══════════════════════════ RANKING ═══════════════════════════
@@ -1184,6 +1181,45 @@ async function deletePerson(id) {
 // ═══════════════════════════════════════════════════════
 // EXPORT / IMPORT
 // ═══════════════════════════════════════════════════════
+async function confirmResetAll() {
+  const first = confirm('⚠️ ¿Borrar TODOS los datos?\nEsto eliminará todos los restaurantes y comensales de este dispositivo y de la nube.');
+  if (!first) return;
+  const second = confirm('¿Estás seguro? Esta acción NO se puede deshacer.');
+  if (!second) return;
+  await resetAllData();
+}
+
+async function resetAllData() {
+  showToast('⏳ Borrando todos los datos...');
+
+  // 1. Borrar IndexedDB local
+  const allVisits = await DB.getAll('visits');
+  for (const v of allVisits) await DB.delete('visits', v.id);
+  const allPeople = await DB.getAll('people');
+  for (const p of allPeople) await DB.delete('people', p.id);
+
+  // 2. Resetear estado en memoria
+  visits = [];
+  people = [];
+
+  // 3. Borrar localStorage
+  localStorage.removeItem('rater-ever-synced');
+
+  // 4. Borrar Firebase completo
+  const online = await waitForFirebase(3000);
+  if (online) {
+    try {
+      await window._fbRemove('visits');
+      await window._fbRemove('people');
+      await window._fbRemove('deleted_visits');
+    } catch(e) { console.warn('Firebase reset error:', e); }
+  }
+
+  renderHome();
+  renderPeopleSettings();
+  showToast('✓ Todos los datos borrados');
+}
+
 async function exportAllData() {
   const dataToExport = {
     version: '1.5',
