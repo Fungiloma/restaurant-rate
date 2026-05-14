@@ -396,8 +396,12 @@ async function syncWithFirebase(manual = false) {
       }
     }
 
-    people.sort((a,b) => a.name.localeCompare(b.name));
-    visits.sort((a,b) => (b.date||b.id||'').localeCompare(a.date||a.id||''));
+    people.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    visits.sort((a,b) => {
+      const aKey = String(b.date || b.id || '');
+      const bKey = String(a.date || a.id || '');
+      return aKey.localeCompare(bKey);
+    });
     renderHome();
     renderPeopleSettings();
 
@@ -1018,7 +1022,21 @@ function buildDetail(visit, isNew) {
 function closeDetail(e) { if(!e||e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open'); }
 async function deleteVisit(id) {
   if(!confirm('¿Borrar esta visita?')) return;
-  await DB.delete('visits',id); visits=await DB.getAll('visits');
+  await DB.delete('visits',id);
+  visits=await DB.getAll('visits');
+  // Eliminar en Firebase también
+  deleteVisitFromFirebase(id).then(() => {
+    // Pull desde Firebase para asegurar que no reaparece
+    waitForFirebase(2000).then(online => {
+      if(online) {
+        window._fbGet('/visits').then(snapshot => {
+          const remote = snapshot.exists() ? Object.values(snapshot.val()||{}) : [];
+          visits = remote;
+          renderHome();
+        }).catch(e => console.warn('Post-delete sync:', e));
+      }
+    });
+  });
   closeDetail(); renderHome();
 }
 
