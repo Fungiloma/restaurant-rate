@@ -356,16 +356,29 @@ async function syncWithFirebase(manual = false) {
       return;
     }
 
-    // ── SUBIR: visitas locales que no están en Firebase
+    // ── FETCH completo de Firebase
     const snapshot = await window._fbGet('/');
     const remote = snapshot.exists() ? snapshot.val() : { visits: {}, people: {} };
-    const remoteVisits  = remote.visits  || {};
-    const remotePeople  = remote.people  || {};
+    const remoteVisits   = remote.visits        || {};
+    const remotePeople   = remote.people        || {};
+    const remoteTombstones = remote.deleted_visits || {};
 
-    // Subir visitas locales que no existen en remoto
+    // ── APLICAR TOMBSTONES: borrar localmente lo que otro dispositivo eliminó
+    let deleted = 0;
+    for (const id of Object.keys(remoteTombstones)) {
+      const localIdx = visits.findIndex(x => x.id === id);
+      if (localIdx !== -1) {
+        await DB.delete('visits', id);
+        visits.splice(localIdx, 1);
+        deleted++;
+      }
+    }
+
+    // ── SUBIR: visitas locales que no están en Firebase ni en tombstones
     let uploaded = 0;
     for (const v of visits) {
-      if (!remoteVisits[v.id]) {
+      // No resubir visitas que ya fueron eliminadas por otro dispositivo
+      if (!remoteVisits[v.id] && !remoteTombstones[v.id]) {
         await window._fbSet('visits/' + v.id, v);
         uploaded++;
       }
@@ -396,6 +409,9 @@ async function syncWithFirebase(manual = false) {
       }
     }
 
+    // Marcar que ya se sincronizó alguna vez (evita sembrar duplicados)
+    localStorage.setItem('rater-ever-synced', '1');
+
     people.sort((a,b) => (a.name||'').localeCompare(b.name||''));
     visits.sort((a,b) => {
       const aKey = String(b.date || b.id || '');
@@ -405,10 +421,18 @@ async function syncWithFirebase(manual = false) {
     renderHome();
     renderPeopleSettings();
 
-    const msg = manual
-      ? `✓ Sync completado — ↑${uploaded} subidas, ↓${downloaded} descargadas`
-      : downloaded > 0 ? `✓ ${downloaded} restaurante(s) nuevo(s) descargado(s)` : null;
-    if (msg) showToast(msg);
+    if (manual) {
+      const parts = [];
+      if (uploaded > 0)   parts.push(`↑${uploaded} subida${uploaded>1?'s':''}`);
+      if (downloaded > 0) parts.push(`↓${downloaded} descarga${downloaded>1?'s':''}`);
+      if (deleted > 0)    parts.push(`🗑️ ${deleted} eliminado${deleted>1?'s':''}`);
+      const msg = parts.length > 0
+        ? `✓ Sync — ${parts.join(', ')}`
+        : `✓ Todo al día`;
+      showToast(msg);
+    } else if (downloaded > 0) {
+      showToast(`✓ ${downloaded} restaurante${downloaded>1?'s':''} nuevo${downloaded>1?'s':''}`);
+    }
 
   } catch (err) {
     console.error('Sync error:', err);
@@ -435,7 +459,12 @@ function updateSyncButton(state) {
 async function deleteVisitFromFirebase(id) {
   const online = await waitForFirebase(3000);
   if (online) {
-    try { await window._fbRemove('visits/' + id); } catch(e) { console.warn('Firebase delete failed:', e); }
+    try {
+      // 1. Borrar de /visits
+      await window._fbRemove('visits/' + id);
+      // 2. Escribir tombstone en /deleted_visits para que otros dispositivos se enteren
+      await window._fbSet('deleted_visits/' + id, { deletedAt: Date.now() });
+    } catch(e) { console.warn('Firebase delete failed:', e); }
   }
 }
 const TOTAL_STEPS = 6;
@@ -449,7 +478,11 @@ async function init() {
   await DB.open();
   people = await DB.getAll('people');
   visits = await DB.getAll('visits');
-  if (people.length === 0) {
+  // Solo sembrar comensales por defecto si:
+  // 1. No hay personas en local
+  // 2. Y nunca se ha sincronizado antes (primer arranque absoluto)
+  const everSynced = localStorage.getItem('rater-ever-synced');
+  if (people.length === 0 && !everSynced) {
     for (const name of ['Ana','Carlos','Laura','Luis','María','Pablo','Sara','Yo']) {
       const p = { id: crypto.randomUUID(), name, createdAt: Date.now() };
       await DB.put('people', p);
@@ -1127,9 +1160,23 @@ async function addPerson() {
   input.value=''; renderPeopleSettings();
 }
 async function deletePerson(id) {
-  if(visits.some(v=>v.diners.includes(id)||v.chooserId===id)){showToast('Persona en visitas guardadas, no se puede eliminar');return;}
+  // Solo bloquear si la persona aparece en visitas que EXISTEN actualmente en local
+  const activeVisits = await DB.getAll('visits');
+  const inUse = activeVisits.some(v =>
+    (Array.isArray(v.diners) && v.diners.includes(id)) || v.chooserId === id
+  );
+  if (inUse) {
+    showToast('Esta persona tiene visitas activas, no se puede eliminar');
+    return;
+  }
   if(!confirm('¿Eliminar esta persona?')) return;
-  await DB.delete('people',id); people=people.filter(p=>p.id!==id); renderPeopleSettings();
+  await DB.delete('people', id);
+  people = people.filter(p => p.id !== id);
+  // Eliminar también en Firebase
+  waitForFirebase(2000).then(online => {
+    if (online) window._fbRemove('people/' + id).catch(e => console.warn('Firebase people delete:', e));
+  });
+  renderPeopleSettings();
 }
 
 // ═══════════════════════════ SW + START ═══════════════════════════
