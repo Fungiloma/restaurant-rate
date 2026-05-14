@@ -10,6 +10,31 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Restaurant Rater</title>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBhKigHn2dxh8Jk9GCByJbAn4FADz8YXus",
+    authDomain: "restaurant-rate-17a49.firebaseapp.com",
+    databaseURL: "https://restaurant-rate-17a49-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "restaurant-rate-17a49",
+    storageBucket: "restaurant-rate-17a49.firebasestorage.app",
+    messagingSenderId: "374977888779",
+    appId: "1:374977888779:web:fdb553ac0e7b215ede3d0e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Exponer al scope global para que el código no-module pueda usarlo
+  window._fbSet    = (path, data) => set(ref(db, path), data);
+  window._fbGet    = (path)       => get(child(ref(db), path));
+  window._fbRemove = (path)       => remove(ref(db, path));
+  window._fbReady  = true;
+  document.dispatchEvent(new Event('firebase-ready'));
+</script>
 <style>
 :root {
   --bg:       #faf7f2;
@@ -200,8 +225,13 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
     <div class="header"><h1>Ajustes</h1><p>Configuración y datos</p></div>
     <div class="scroll">
       <div class="card">
+        <div class="card-title">Sincronización</div>
+        <p class="text-muted" style="margin-bottom:12px;">Sincroniza tus restaurantes con la nube para compartirlos con otros dispositivos. La sync se realiza automáticamente al abrir la app.</p>
+        <button class="btn btn-primary" id="sync-btn" onclick="syncWithFirebase(true)">🔄 Sincronizar</button>
+      </div>
+      <div class="card">
         <div class="card-title">Exportar datos</div>
-        <p class="text-muted" style="margin-bottom:12px;">Descarga un archivo JSON con todos tus restaurantes y comensales. Úsalo como backup o para migrar a una versión nueva.</p>
+        <p class="text-muted" style="margin-bottom:12px;">Descarga un archivo JSON con todos tus restaurantes y comensales. Úsalo como backup.</p>
         <button class="btn btn-primary" onclick="exportAllData()">📥 Exportar mis datos</button>
       </div>
       <div class="card">
@@ -300,6 +330,110 @@ let visits = [];
 let wizardData = {};
 let wizardStep = 0;
 let pendingNavTarget = null;
+let syncInProgress = false;
+
+// ═══════════════════════════ FIREBASE SYNC ═══════════════════════════
+
+async function waitForFirebase(timeout = 5000) {
+  if (window._fbReady) return true;
+  return new Promise(resolve => {
+    const t = setTimeout(() => resolve(false), timeout);
+    document.addEventListener('firebase-ready', () => { clearTimeout(t); resolve(true); }, { once: true });
+  });
+}
+
+async function syncWithFirebase(manual = false) {
+  if (syncInProgress) return;
+  syncInProgress = true;
+  updateSyncButton('syncing');
+
+  try {
+    const online = await waitForFirebase(5000);
+    if (!online) {
+      if (manual) showToast('❌ Sin conexión a Firebase');
+      syncInProgress = false;
+      updateSyncButton('idle');
+      return;
+    }
+
+    // ── SUBIR: visitas locales que no están en Firebase
+    const snapshot = await window._fbGet('/');
+    const remote = snapshot.exists() ? snapshot.val() : { visits: {}, people: {} };
+    const remoteVisits  = remote.visits  || {};
+    const remotePeople  = remote.people  || {};
+
+    // Subir visitas locales que no existen en remoto
+    let uploaded = 0;
+    for (const v of visits) {
+      if (!remoteVisits[v.id]) {
+        await window._fbSet('visits/' + v.id, v);
+        uploaded++;
+      }
+    }
+
+    // Subir personas locales que no existen en remoto
+    for (const p of people) {
+      if (!remotePeople[p.id]) {
+        await window._fbSet('people/' + p.id, p);
+      }
+    }
+
+    // ── DESCARGAR: visitas remotas que no están en local
+    let downloaded = 0;
+    for (const [id, v] of Object.entries(remoteVisits)) {
+      if (!visits.find(x => x.id === id)) {
+        await DB.put('visits', v);
+        visits.push(v);
+        downloaded++;
+      }
+    }
+
+    // Descargar personas remotas que no están en local
+    for (const [id, p] of Object.entries(remotePeople)) {
+      if (!people.find(x => x.id === id)) {
+        await DB.put('people', p);
+        people.push(p);
+      }
+    }
+
+    people.sort((a,b) => a.name.localeCompare(b.name));
+    visits.sort((a,b) => (b.date||b.id||'').localeCompare(a.date||a.id||''));
+    renderHome();
+    renderPeopleSettings();
+
+    const msg = manual
+      ? `✓ Sync completado — ↑${uploaded} subidas, ↓${downloaded} descargadas`
+      : downloaded > 0 ? `✓ ${downloaded} restaurante(s) nuevo(s) descargado(s)` : null;
+    if (msg) showToast(msg);
+
+  } catch (err) {
+    console.error('Sync error:', err);
+    if (manual) showToast('❌ Error de sync: ' + err.message);
+  }
+
+  syncInProgress = false;
+  updateSyncButton('idle');
+}
+
+function updateSyncButton(state) {
+  const btn = document.getElementById('sync-btn');
+  if (!btn) return;
+  if (state === 'syncing') {
+    btn.textContent = '⏳ Sincronizando...';
+    btn.disabled = true;
+  } else {
+    btn.textContent = '🔄 Sincronizar';
+    btn.disabled = false;
+  }
+}
+
+// Cuando se elimina una visita, también eliminarla en Firebase
+async function deleteVisitFromFirebase(id) {
+  const online = await waitForFirebase(3000);
+  if (online) {
+    try { await window._fbRemove('visits/' + id); } catch(e) { console.warn('Firebase delete failed:', e); }
+  }
+}
 const TOTAL_STEPS = 6;
 const DEFAULT_SCORE = 5.00;
 const STEP = 0.05;
@@ -321,6 +455,8 @@ async function init() {
   people.sort((a,b) => a.name.localeCompare(b.name));
   renderHome();
   renderPeopleSettings();
+  // Auto-sync silencioso al arrancar
+  syncWithFirebase(false);
 }
 
 // ═══════════════════════════ SCORING ═══════════════════════════
@@ -825,6 +961,10 @@ async function wizardNext() {
     wizardData.note=document.getElementById('s5-note')?.value.trim()||'';
     await DB.put('visits', wizardData);
     visits=await DB.getAll('visits');
+    // Subir inmediatamente a Firebase (fire-and-forget)
+    waitForFirebase(3000).then(online => {
+      if (online) window._fbSet('visits/' + wizardData.id, wizardData).catch(e => console.warn('Firebase upload:', e));
+    });
     _doGoScreen('home');
     showResult(wizardData);
     return;
