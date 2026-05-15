@@ -200,9 +200,8 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
     </div>
     <div class="scroll" style="padding-top:8px;">
       <div id="tab-global" class="tab-content active"></div>
-      <div id="tab-category" class="tab-content"></div>
-      <div id="tab-chooser" class="tab-content"></div>
       <div id="tab-country" class="tab-content"></div>
+      <div id="tab-chooser" class="tab-content"></div>
     </div>
   </div>
 
@@ -1140,12 +1139,12 @@ async function deleteVisit(id) {
 
 // ═══════════════════════════ RANKING ═══════════════════════════
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['global','category','chooser','country'][i]===tab));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['global','country','chooser'][i]===tab));
   document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   renderRanking();
 }
-function renderRanking() { renderTabGlobal(); renderTabCategory(); renderTabChooser(); renderTabCountry(); }
+function renderRanking() { renderTabGlobal(); renderTabCountry(); renderTabChooser(); }
 function rnc(i){return i===0?'gold':i===1?'silver':i===2?'bronze':'';}
 
 function renderTabGlobal() {
