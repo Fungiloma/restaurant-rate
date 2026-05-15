@@ -1297,7 +1297,8 @@ function renderTabCountry() {
       .filter(v => ((v.country||'').trim()||'Sin especificar') === state.country)
       .filter(v => ((v.city||'').trim()||'Sin especificar') === state.city)
       .map(v => ({ ...v, score: calcFinalScore(v) }));
-    const cats = ['Todas', ...[...new Set(cityVisits.map(v => v.category).filter(Boolean))].sort()];
+    window._catKeys = ['Todas', ...[...new Set(cityVisits.map(v => v.category).filter(Boolean))].sort()];
+    const cats = window._catKeys;
     const filtered = state.category && state.category !== 'Todas'
       ? cityVisits.filter(v => v.category === state.category)
       : cityVisits;
@@ -1308,9 +1309,9 @@ function renderTabCountry() {
       </div>
       <div style="font-size:18px;font-weight:700;color:var(--text);padding:4px 0 10px;">📍 ${esc(state.city)}</div>
       <div style="overflow-x:auto;white-space:nowrap;padding-bottom:10px;margin-bottom:4px;">
-        ${cats.map(c => {
+        ${cats.map((c, idx) => {
           const active = (!state.category||state.category==='Todas') ? c==='Todas' : state.category===c;
-          return `<button onclick="countrySetCat(${JSON.stringify(c)})"
+          return `<button onclick="countrySetCat(${idx})"
             style="display:inline-block;margin-right:8px;padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;
             border:0.5px solid ${active?'var(--accent)':'var(--border2)'};
             background:${active?'var(--accent-dim)':'var(--bg2)'};
@@ -1352,8 +1353,9 @@ function countryDrill(action, value) {
   renderTabCountry();
 }
 
-function countrySetCat(cat) {
-  if (!window._countryState) return;
+function countrySetCat(idx) {
+  if (!window._countryState || !window._catKeys) return;
+  const cat = window._catKeys[idx];
   window._countryState.category = cat === 'Todas' ? '' : cat;
   renderTabCountry();
 }
