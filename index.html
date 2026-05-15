@@ -1101,6 +1101,7 @@ function buildDetail(visit, isNew) {
     <div class="result-big" style="color:${sc}">${bd.final.toFixed(2)}</div>
     <div class="result-label" style="font-weight:600;color:var(--text);font-size:15px;">${esc(visit.restaurantName)}</div>
     <div class="result-label">${visit.category} · ${dateStr}</div>
+    ${(visit.city||visit.country) ? `<div class="result-label" style="color:var(--accent);font-weight:600;">📍 ${visit.city?esc(visit.city):''}${visit.city&&visit.country?' (':''}${visit.country?esc(visit.country):''}${visit.city&&visit.country?')':''}</div>` : ''}
     <div class="result-label" style="font-size:13px;color:var(--text3);">${diners.map(d=>d.name).join(', ')}</div>
   </div>
   <div class="result-grid">
