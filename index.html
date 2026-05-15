@@ -194,13 +194,15 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
     <div class="header"><h1>Ranking</h1></div>
     <div class="tabs">
       <div class="tab active" onclick="switchTab('global')">Global</div>
-      <div class="tab" onclick="switchTab('category')">Por categoría</div>
+      <div class="tab" onclick="switchTab('category')">Categoría</div>
       <div class="tab" onclick="switchTab('chooser')">Electores</div>
+      <div class="tab" onclick="switchTab('country')">Países</div>
     </div>
     <div class="scroll" style="padding-top:8px;">
       <div id="tab-global" class="tab-content active"></div>
       <div id="tab-category" class="tab-content"></div>
       <div id="tab-chooser" class="tab-content"></div>
+      <div id="tab-country" class="tab-content"></div>
     </div>
   </div>
 
@@ -240,7 +242,13 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
         <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📤 Importar datos</button>
         <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importAllData(event)">
       </div>
-      <div class="card" style="border-color:var(--danger);">
+      <div class="card" id="admin-btn-card">
+        <button class="btn btn-secondary" onclick="promptAdminPin()">🔒 Modo admin</button>
+      </div>
+      <div class="card">
+        <button class="btn btn-secondary" style="width:100%;" onclick="logout()">🚪 Cerrar sesión</button>
+      </div>
+      <div class="card" id="admin-danger-zone" style="display:none;border-color:var(--danger);">
         <div class="card-title" style="color:var(--danger);">Zona de peligro</div>
         <p class="text-muted" style="margin-bottom:12px;">Borra restaurantes o personas de este dispositivo y de la nube. Esta acción no se puede deshacer.</p>
         <button class="btn btn-danger" style="margin-bottom:10px;width:100%;" onclick="confirmResetVisits()">🗑️ Borrar todos los restaurantes</button>
@@ -337,6 +345,52 @@ let wizardData = {};
 let wizardStep = 0;
 let pendingNavTarget = null;
 let syncInProgress = false;
+let isAuthenticated = false; // false = invitado, true = usuario con escritura
+
+function checkAuth() {
+  isAuthenticated = localStorage.getItem('rater-auth') === '2eee286636f8adfd9ca79584b6c84256e7c7f303670f412cd53f75ad0685db2a';
+}
+
+async function promptWritePin(onSuccess) {
+  const pin = prompt('Introduce la contraseña para continuar:');
+  if (pin === null) return;
+  const msgBuffer = new TextEncoder().encode(pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (hashHex === '2eee286636f8adfd9ca79584b6c84256e7c7f303670f412cd53f75ad0685db2a') {
+    localStorage.setItem('rater-auth', hashHex);
+    isAuthenticated = true;
+    updateAuthUI();
+    showToast('✓ Acceso concedido');
+    if (onSuccess) onSuccess();
+  } else {
+    showToast('Contraseña incorrecta');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('rater-auth');
+  isAuthenticated = false;
+  updateAuthUI();
+  goScreen('home');
+  showToast('Sesión cerrada');
+}
+
+function updateAuthUI() {
+  // Botón de añadir restaurante
+  const addBtn = document.getElementById('add-visit-btn');
+  if (addBtn) addBtn.style.display = isAuthenticated ? '' : 'none';
+  // Pestañas nav
+  const navPersonas = document.getElementById('nav-settings');
+  const navAjustes = document.getElementById('nav-config');
+  if (navPersonas) navPersonas.style.display = isAuthenticated ? '' : 'none';
+  if (navAjustes) navAjustes.style.display = isAuthenticated ? '' : 'none';
+  // Botón login/logout en home
+  const authBtn = document.getElementById('auth-btn');
+  if (authBtn) {
+    authBtn.textContent = isAuthenticated ? '🔓 Cerrar sesión' : '🔑 Iniciar sesión';
+  }
+}
 
 // ═══════════════════════════ FIREBASE SYNC ═══════════════════════════
 
@@ -481,6 +535,7 @@ const CATEGORIES = ['Americana','Árabe','Bar','Brasileña','Cafetería','China'
 
 // ═══════════════════════════ INIT ═══════════════════════════
 async function init() {
+  checkAuth();
   await DB.open();
   people = await DB.getAll('people');
   visits = await DB.getAll('visits');
@@ -488,6 +543,7 @@ async function init() {
   people.sort((a,b) => a.name.localeCompare(b.name));
   renderHome();
   renderPeopleSettings();
+  updateAuthUI();
   // Auto-sync al arrancar — descarga personas y visitas de Firebase
   syncWithFirebase(false);
 }
@@ -600,6 +656,16 @@ function calcFinalScore(visit) {
 
 // ═══════════════════════════ NAV ═══════════════════════════
 function goScreen(name) {
+  // Si no autenticado, bloquear Personas y Ajustes
+  if (!isAuthenticated && (name === 'settings' || name === 'config')) {
+    promptWritePin(() => _doGoScreen(name));
+    return;
+  }
+  // Si no autenticado, bloquear añadir restaurante
+  if (!isAuthenticated && name === 'new') {
+    promptWritePin(() => _doGoScreen(name));
+    return;
+  }
   // Si estamos en el wizard, pedir confirmación antes de salir
   const wizardActive = document.getElementById('screen-new').classList.contains('active');
   if (wizardActive && name !== 'new') {
@@ -653,7 +719,7 @@ function renderHome() {
       <div class="flex items-center justify-between">
         <div style="flex:1;min-width:0;">
           <div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(v.restaurantName)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:3px;">${v.category} · ${dateStr}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px;">${v.category}${v.city ? ' · ' + esc(v.city) : ''} · ${dateStr}</div>
           ${chooser ? `<div style="font-size:12px;color:var(--text3);">Eligió: <span style="color:var(--text2)">${chooser.name}</span></div>` : ''}
           <div style="font-size:12px;color:var(--text3);">${v.diners.length} comensal${v.diners.length!==1?'es':''}</div>
         </div>
@@ -674,7 +740,7 @@ function scoreColor(s) {
 function startNewVisit() {
   wizardData = {
     id: crypto.randomUUID(), date: Date.now(),
-    restaurantName:'', category:'', chooserId:null,
+    restaurantName:'', category:'', country:'', city:'', chooserId:null,
     diners:[], hasStarter:true, starterCount:1, mainShared:false, mainCount:2,
     hasDessert:true, dessertCount:1,
     starters:[], mains:[], desserts:[],
@@ -718,6 +784,10 @@ function renderStep0(el) {
         <option value="">Selecciona categoría</option>
         ${CATEGORIES.map(c=>`<option value="${c}"${wizardData.category===c?' selected':''}>${c}</option>`).join('')}
       </select>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <div class="field" style="flex:1;"><label>País *</label><input type="text" id="s0-country" placeholder="Ej: España" value="${esc(wizardData.country||'')}"></div>
+      <div class="field" style="flex:1;"><label>Ciudad *</label><input type="text" id="s0-city" placeholder="Ej: Valencia" value="${esc(wizardData.city||'')}"></div>
     </div>
     <div class="field"><label>¿Quién eligió el restaurante? *</label>
       <select id="s0-chooser">
@@ -982,10 +1052,16 @@ async function wizardNext() {
     const name=document.getElementById('s0-name')?.value.trim();
     const cat=document.getElementById('s0-cat')?.value;
     const chooserId=document.getElementById('s0-chooser')?.value||null;
+    const country=document.getElementById('s0-country')?.value.trim()||'';
+    const city=document.getElementById('s0-city')?.value.trim()||'';
     if(!name){showToast('Introduce el nombre del restaurante');return;}
     if(!cat){showToast('Selecciona una categoría');return;}
+    if(!country){showToast('Introduce el país');return;}
+    if(!city){showToast('Introduce la ciudad');return;}
     if(!chooserId){showToast('Selecciona quién eligió el restaurante');return;}
     wizardData.restaurantName=name; wizardData.category=cat;
+    wizardData.country=country;
+    wizardData.city=city;
     wizardData.chooserId=chooserId;
   }
   if (wizardStep===1 && wizardData.diners.length===0) { showToast('Selecciona al menos un comensal'); return; }
@@ -1063,12 +1139,12 @@ async function deleteVisit(id) {
 
 // ═══════════════════════════ RANKING ═══════════════════════════
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['global','category','chooser'][i]===tab));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['global','category','chooser','country'][i]===tab));
   document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   renderRanking();
 }
-function renderRanking() { renderTabGlobal(); renderTabCategory(); renderTabChooser(); }
+function renderRanking() { renderTabGlobal(); renderTabCategory(); renderTabChooser(); renderTabCountry(); }
 function rnc(i){return i===0?'gold':i===1?'silver':i===2?'bronze':'';}
 
 function renderTabGlobal() {
@@ -1172,6 +1248,23 @@ async function deletePerson(id) {
 // ═══════════════════════════════════════════════════════
 // EXPORT / IMPORT
 // ═══════════════════════════════════════════════════════
+async function promptAdminPin() {
+  const pin = prompt('Introduce el PIN de administrador:');
+  if (pin === null) return;
+  // Comparar hash SHA-256 — el PIN nunca se guarda en claro
+  const msgBuffer = new TextEncoder().encode(pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  if (hashHex === '1ef79462017df1bf88a3e99aff3a3b5d5935816797117cfa617e8fa30e31be2d') {
+    document.getElementById('admin-danger-zone').style.display = 'block';
+    document.getElementById('admin-btn-card').style.display = 'none';
+    showToast('✓ Modo admin activado');
+  } else {
+    showToast('PIN incorrecto');
+  }
+}
+
 async function confirmResetVisits() {
   if (!confirm('⚠️ ¿Borrar TODOS los restaurantes?\nSe eliminarán de este dispositivo y de la nube.')) return;
   if (!confirm('¿Estás seguro? Esta acción NO se puede deshacer.')) return;
