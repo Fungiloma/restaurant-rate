@@ -1126,6 +1126,7 @@ function buildDetail(visit, isNew) {
 
 function closeDetail(e) { if(!e||e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open'); }
 async function deleteVisit(id) {
+  if (!isAuthenticated) { promptWritePin(() => deleteVisit(id)); return; }
   if(!confirm('¿Borrar esta visita?')) return;
   // 1. Borrar de IndexedDB local
   await DB.delete('visits', id);
@@ -1214,8 +1215,9 @@ function renderTabCountry() {
     return;
   }
 
-  if (!el._state) el._state = { level: 'countries', country: null, city: null, category: '' };
-  const state = el._state;
+  // Usar window._countryState para que sobreviva re-renders del innerHTML
+  if (!window._countryState) window._countryState = { level: 'countries', country: null, city: null, category: '' };
+  const state = window._countryState;
 
   // ── NIVEL 1: países ──
   if (state.level === 'countries') {
@@ -1231,7 +1233,7 @@ function renderTabCountry() {
       const best = [...cvs].sort((a,b) => b.score-a.score)[0];
       const sc = scoreColor(avg);
       const cities = [...new Set(cvs.map(v => (v.city||'').trim()).filter(Boolean))];
-      return `<div class="card" style="cursor:pointer;" onclick="countryDrill('${el.id}','country',${JSON.stringify(country)})">
+      return `<div class="card" style="cursor:pointer;" onclick="countryDrill('country',${JSON.stringify(country)})">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:16px;font-weight:700;color:var(--text);">🌍 ${esc(country)}</div>
@@ -1260,7 +1262,7 @@ function renderTabCountry() {
     const sorted = Object.entries(byCity).sort(([a],[b]) => a.localeCompare(b));
     el.innerHTML = `
       <div style="padding:12px 0 4px;">
-        <button onclick="countryDrill('${el.id}','back-countries',null)" style="background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:0;">← Países</button>
+        <button onclick="countryDrill('back-countries',null)" style="background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:0;">← Países</button>
       </div>
       <div style="font-size:18px;font-weight:700;color:var(--text);padding:4px 0 14px;">🌍 ${esc(state.country)}</div>
       ${sorted.map(([city, cvs]) => {
@@ -1268,7 +1270,7 @@ function renderTabCountry() {
         const best = [...cvs].sort((a,b) => b.score-a.score)[0];
         const sc = scoreColor(avg);
         const cats = [...new Set(cvs.map(v => v.category).filter(Boolean))];
-        return `<div class="card" style="cursor:pointer;" onclick="countryDrill('${el.id}','city',${JSON.stringify(city)})">
+        return `<div class="card" style="cursor:pointer;" onclick="countryDrill('city',${JSON.stringify(city)})">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <div style="flex:1;min-width:0;">
               <div style="font-size:16px;font-weight:700;color:var(--text);">📍 ${esc(city)}</div>
@@ -1298,13 +1300,13 @@ function renderTabCountry() {
     const ranked = [...filtered].sort((a,b) => b.score-a.score);
     el.innerHTML = `
       <div style="padding:12px 0 4px;">
-        <button onclick="countryDrill('${el.id}','back-cities',null)" style="background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:0;">← ${esc(state.country)}</button>
+        <button onclick="countryDrill('back-cities',null)" style="background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;padding:0;">← ${esc(state.country)}</button>
       </div>
       <div style="font-size:18px;font-weight:700;color:var(--text);padding:4px 0 10px;">📍 ${esc(state.city)}</div>
       <div style="overflow-x:auto;white-space:nowrap;padding-bottom:10px;margin-bottom:4px;">
         ${cats.map(c => {
           const active = (!state.category||state.category==='Todas') ? c==='Todas' : state.category===c;
-          return `<button onclick="countrySetCat('${el.id}',${JSON.stringify(c)})"
+          return `<button onclick="countrySetCat(${JSON.stringify(c)})"
             style="display:inline-block;margin-right:8px;padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer;
             border:0.5px solid ${active?'var(--accent)':'var(--border2)'};
             background:${active?'var(--accent-dim)':'var(--bg2)'};
@@ -1331,10 +1333,9 @@ function renderTabCountry() {
   }
 }
 
-function countryDrill(elId, action, value) {
-  const el = document.getElementById(elId);
-  if (!el._state) el._state = { level: 'countries', country: null, city: null, category: '' };
-  const s = el._state;
+function countryDrill(action, value) {
+  if (!window._countryState) window._countryState = { level: 'countries', country: null, city: null, category: '' };
+  const s = window._countryState;
   if      (action === 'country')       { s.level='cities';       s.country=value; s.city=null; s.category=''; }
   else if (action === 'city')          { s.level='restaurants';  s.city=value;    s.category=''; }
   else if (action === 'back-cities')   { s.level='cities';       s.city=null;     s.category=''; }
@@ -1342,10 +1343,9 @@ function countryDrill(elId, action, value) {
   renderTabCountry();
 }
 
-function countrySetCat(elId, cat) {
-  const el = document.getElementById(elId);
-  if (!el._state) return;
-  el._state.category = cat === 'Todas' ? '' : cat;
+function countrySetCat(cat) {
+  if (!window._countryState) return;
+  window._countryState.category = cat === 'Todas' ? '' : cat;
   renderTabCountry();
 }
 
