@@ -226,17 +226,8 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22p
     <div class="scroll">
       <div class="card">
         <div class="card-title">Sincronización</div>
-        <p class="text-muted" style="margin-bottom:12px;">Sincroniza tus restaurantes con la nube para compartirlos con otros dispositivos.</p>
+        <p class="text-muted" style="margin-bottom:12px;">Sincroniza tus restaurantes con la nube para compartirlos con otros dispositivos. La sync se realiza automáticamente al abrir la app.</p>
         <button class="btn btn-primary" id="sync-btn" onclick="syncWithFirebase(true)">🔄 Sincronizar</button>
-      </div>
-      <div class="card">
-        <div class="card-title">Grupos</div>
-        <p class="text-muted" style="margin-bottom:12px;">Cambia entre tu grupo principal y grupos privados. Crea un grupo para puntuar con tus amigos sin afectar al ranking principal.</p>
-        <div id="groups-list"></div>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button class="btn btn-primary" style="flex:1;" onclick="createGroup()">+ Crear grupo</button>
-          <button class="btn btn-secondary" style="flex:1;" onclick="joinGroup()">🔗 Unirse</button>
-        </div>
       </div>
       <div class="card">
         <div class="card-title">Exportar datos</div>
@@ -353,13 +344,6 @@ let wizardStep = 0;
 let pendingNavTarget = null;
 let syncInProgress = false;
 let isAuthenticated = false; // false = invitado, true = usuario con escritura
-let currentGroupId = null;   // null = grupo público, string = grupo privado
-let myGroups = [];           // [{id, name, pinHash}]
-
-// Ruta base en Firebase según grupo activo
-function fbPath(sub) {
-  return currentGroupId ? 'groups/' + currentGroupId + '/' + sub : sub;
-}
 
 function checkAuth() {
   isAuthenticated = localStorage.getItem('rater-auth') === '2eee286636f8adfd9ca79584b6c84256e7c7f303670f412cd53f75ad0685db2a';
@@ -431,7 +415,7 @@ async function syncWithFirebase(manual = false) {
     }
 
     // ── FETCH completo de Firebase
-    const snapshot = await window._fbGet(fbPath(''));
+    const snapshot = await window._fbGet('/');
     const remote = snapshot.exists() ? snapshot.val() : { visits: {}, people: {} };
     const remoteVisits   = remote.visits        || {};
     const remotePeople   = remote.people        || {};
@@ -442,7 +426,7 @@ async function syncWithFirebase(manual = false) {
     for (const id of Object.keys(remoteTombstones)) {
       const localIdx = visits.findIndex(x => x.id === id);
       if (localIdx !== -1) {
-        await DB.delete(getVisitStore(), id);
+        await DB.delete('visits', id);
         visits.splice(localIdx, 1);
         deleted++;
       }
@@ -453,7 +437,7 @@ async function syncWithFirebase(manual = false) {
     for (const v of visits) {
       // No resubir visitas que ya fueron eliminadas por otro dispositivo
       if (!remoteVisits[v.id] && !remoteTombstones[v.id]) {
-        await window._fbSet(fbPath('visits/' + v.id), v);
+        await window._fbSet('visits/' + v.id, v);
         uploaded++;
       }
     }
@@ -461,7 +445,7 @@ async function syncWithFirebase(manual = false) {
     // Subir personas locales que no existen en remoto
     for (const p of people) {
       if (!remotePeople[p.id]) {
-        await window._fbSet(fbPath('people/' + p.id), p);
+        await window._fbSet('people/' + p.id, p);
       }
     }
 
@@ -469,7 +453,7 @@ async function syncWithFirebase(manual = false) {
     let downloaded = 0;
     for (const [id, v] of Object.entries(remoteVisits)) {
       if (!visits.find(x => x.id === id)) {
-        await DB.put(getVisitStore(), v);
+        await DB.put('visits', v);
         visits.push(v);
         downloaded++;
       }
@@ -478,7 +462,7 @@ async function syncWithFirebase(manual = false) {
     // Descargar personas remotas que no están en local
     for (const [id, p] of Object.entries(remotePeople)) {
       if (!people.find(x => x.id === id)) {
-        await DB.put(getPeopleStore(), p);
+        await DB.put('people', p);
         people.push(p);
       }
     }
@@ -535,8 +519,9 @@ async function deleteVisitFromFirebase(id) {
   if (online) {
     try {
       // 1. Borrar de /visits
-      await window._fbRemove(fbPath('visits/' + id));
-      await window._fbSet(fbPath('deleted_visits/' + id), { deletedAt: Date.now() });
+      await window._fbRemove('visits/' + id);
+      // 2. Escribir tombstone en /deleted_visits para que otros dispositivos se enteren
+      await window._fbSet('deleted_visits/' + id, { deletedAt: Date.now() });
     } catch(e) { console.warn('Firebase delete failed:', e); }
   }
 }
@@ -549,29 +534,16 @@ const CATEGORIES = ['Americana','Árabe','Bar','Brasileña','Cafetería','China'
 // ═══════════════════════════ INIT ═══════════════════════════
 async function init() {
   checkAuth();
-  loadMyGroups();
   await DB.open();
-  
-  // Restaurar último grupo activo
-  const lastGroup = localStorage.getItem('rater-current-group');
-  if (lastGroup && myGroups.find(g => g.id === lastGroup)) {
-    currentGroupId = lastGroup;
-  }
-  
-  // Asegurar que existen los stores para el grupo activo
-  if (currentGroupId) {
-    await DB.ensureStore('gv_' + currentGroupId);
-    await DB.ensureStore('gp_' + currentGroupId);
-  }
-  
-  await reloadGroupData();
+  people = await DB.getAll('people');
+  visits = await DB.getAll('visits');
+  // NUNCA sembrar personas por defecto — siempre vienen de Firebase o las añade el usuario
+  people.sort((a,b) => a.name.localeCompare(b.name));
   renderHome();
   renderPeopleSettings();
-  renderGroupsUI();
-  updateGroupHeader();
   updateAuthUI();
+  // Auto-sync al arrancar — descarga personas y visitas de Firebase
   syncWithFirebase(false);
-  checkGroupFromURL();
 }
 
 // ═══════════════════════════ SCORING ═══════════════════════════
@@ -1121,11 +1093,11 @@ async function wizardNext() {
   if (wizardStep===TOTAL_STEPS-1) {
     wizardData.pricePerPerson=parseFloat(document.getElementById('s5-price')?.value)||null;
     wizardData.note=document.getElementById('s5-note')?.value.trim()||'';
-    await DB.put(getVisitStore(), wizardData);
-    visits=await DB.getAll(getVisitStore());
+    await DB.put('visits', wizardData);
+    visits=await DB.getAll('visits');
     // Subir inmediatamente a Firebase (fire-and-forget)
     waitForFirebase(3000).then(online => {
-      if (online) window._fbSet(fbPath('visits/' + wizardData.id), wizardData).catch(e => console.warn('Firebase upload:', e));
+      if (online) window._fbSet('visits/' + wizardData.id, wizardData).catch(e => console.warn('Firebase upload:', e));
     });
     _doGoScreen('home');
     showResult(wizardData);
@@ -1269,7 +1241,7 @@ async function deleteVisit(id) {
   if (!isAuthenticated) { promptWritePin(() => deleteVisit(id)); return; }
   if(!confirm('¿Borrar esta visita?')) return;
   // 1. Borrar de IndexedDB local
-  await DB.delete(getVisitStore(), id);
+  await DB.delete('visits', id);
   visits = visits.filter(v => v.id !== id);
   // 2. Borrar de Firebase + escribir tombstone
   deleteVisitFromFirebase(id);
@@ -1525,7 +1497,7 @@ async function addPerson() {
 }
 async function deletePerson(id) {
   // Solo bloquear si la persona aparece en visitas que EXISTEN actualmente en local
-  const activeVisits = await DB.getAll(getVisitStore());
+  const activeVisits = await DB.getAll('visits');
   const inUse = activeVisits.some(v =>
     (Array.isArray(v.diners) && v.diners.includes(id)) || v.chooserId === id
   );
@@ -1534,11 +1506,11 @@ async function deletePerson(id) {
     return;
   }
   if(!confirm('¿Eliminar esta persona?')) return;
-  await DB.delete(getPeopleStore(), id);
+  await DB.delete('people', id);
   people = people.filter(p => p.id !== id);
   // Eliminar también en Firebase
   waitForFirebase(2000).then(online => {
-    if (online) window._fbRemove(fbPath('people/' + id)).catch(e => console.warn('Firebase people delete:', e));
+    if (online) window._fbRemove('people/' + id).catch(e => console.warn('Firebase people delete:', e));
   });
   renderPeopleSettings();
 }
@@ -1570,15 +1542,15 @@ async function confirmResetVisits() {
   if (!confirm('¿Estás seguro? Esta acción NO se puede deshacer.')) return;
   showToast('⏳ Borrando restaurantes...');
   // Local
-  const allVisits = await DB.getAll(getVisitStore());
-  for (const v of allVisits) await DB.delete(getVisitStore(), v.id);
+  const allVisits = await DB.getAll('visits');
+  for (const v of allVisits) await DB.delete('visits', v.id);
   visits = [];
   // Firebase
   const online = await waitForFirebase(3000);
   if (online) {
     try {
-      await window._fbRemove(fbPath('visits'));
-      await window._fbRemove(fbPath('deleted_visits'));
+      await window._fbRemove('visits');
+      await window._fbRemove('deleted_visits');
     } catch(e) { console.warn('Firebase reset visits error:', e); }
   }
   renderHome();
@@ -1590,217 +1562,18 @@ async function confirmResetPeople() {
   if (!confirm('¿Estás seguro? Esta acción NO se puede deshacer.')) return;
   showToast('⏳ Borrando personas...');
   // Local
-  const allPeople = await DB.getAll(getPeopleStore());
-  for (const p of allPeople) await DB.delete(getPeopleStore(), p.id);
+  const allPeople = await DB.getAll('people');
+  for (const p of allPeople) await DB.delete('people', p.id);
   people = [];
   // Firebase
   const online = await waitForFirebase(3000);
   if (online) {
     try {
-      await window._fbRemove(fbPath('people'));
+      await window._fbRemove('people');
     } catch(e) { console.warn('Firebase reset people error:', e); }
   }
   renderPeopleSettings();
   showToast('✓ Personas borradas');
-}
-
-
-// ═══════════════════════════ GRUPOS ═══════════════════════════
-
-function loadMyGroups() {
-  try { myGroups = JSON.parse(localStorage.getItem('rater-groups') || '[]'); }
-  catch(e) { myGroups = []; }
-}
-function saveMyGroups() {
-  localStorage.setItem('rater-groups', JSON.stringify(myGroups));
-}
-
-async function hashPin(pin) {
-  const buf = new TextEncoder().encode(pin);
-  const hash = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function createGroup() {
-  const name = prompt('Nombre del grupo:');
-  if (!name || !name.trim()) return;
-  const pin = prompt('PIN del grupo (lo necesitarán tus amigos para unirse):');
-  if (!pin || !pin.trim()) return;
-  
-  const id = crypto.randomUUID().slice(0,12);
-  const pinHash = await hashPin(pin.trim());
-  
-  const online = await waitForFirebase(3000);
-  if (!online) { showToast('❌ Sin conexión'); return; }
-  
-  await window._fbSet('groups/' + id, {
-    name: name.trim(),
-    pinHash: pinHash,
-    createdAt: Date.now()
-  });
-  
-  myGroups.push({ id, name: name.trim(), pinHash });
-  saveMyGroups();
-  renderGroupsUI();
-  
-  const link = window.location.origin + window.location.pathname + '?group=' + id;
-  showToast('✓ Grupo creado');
-  setTimeout(() => {
-    prompt('Comparte este link con tus amigos:', link);
-  }, 500);
-}
-
-async function joinGroup() {
-  const code = prompt('Código del grupo (lo encontrarás en el link):');
-  if (!code || !code.trim()) return;
-  const id = code.trim();
-  
-  // Verificar si ya perteneces
-  if (myGroups.find(g => g.id === id)) {
-    showToast('Ya perteneces a este grupo');
-    return;
-  }
-  
-  const pin = prompt('PIN del grupo:');
-  if (!pin || !pin.trim()) return;
-  
-  const online = await waitForFirebase(3000);
-  if (!online) { showToast('❌ Sin conexión'); return; }
-  
-  try {
-    const snapshot = await window._fbGet('groups/' + id);
-    if (!snapshot.exists()) { showToast('Grupo no encontrado'); return; }
-    const group = snapshot.val();
-    
-    const pinHash = await hashPin(pin.trim());
-    if (pinHash !== group.pinHash) { showToast('PIN incorrecto'); return; }
-    
-    myGroups.push({ id, name: group.name, pinHash: group.pinHash });
-    saveMyGroups();
-    renderGroupsUI();
-    showToast('✓ Te uniste a "' + group.name + '"');
-  } catch(e) {
-    showToast('❌ Error: ' + e.message);
-  }
-}
-
-async function switchGroup(groupId) {
-  // Guardar qué grupo estaba activo
-  currentGroupId = groupId;
-  localStorage.setItem('rater-current-group', groupId || '');
-  
-  // Limpiar estado local y recargar desde IndexedDB del grupo
-  // Para grupos privados usamos stores separados en IndexedDB
-  await reloadGroupData();
-  
-  updateGroupHeader();
-  renderHome();
-  renderPeopleSettings();
-  syncWithFirebase(false);
-}
-
-async function reloadGroupData() {
-  if (!currentGroupId) {
-    visits = await DB.getAll('visits');
-    people = await DB.getAll('people');
-  } else {
-    await DB.ensureStore('gv_' + currentGroupId);
-    await DB.ensureStore('gp_' + currentGroupId);
-    try { visits = await DB.getAll('gv_' + currentGroupId); } catch(e) { visits = []; }
-    try { people = await DB.getAll('gp_' + currentGroupId); } catch(e) { people = []; }
-  }
-  people.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-}
-
-function getVisitStore() { return currentGroupId ? 'gv_' + currentGroupId : 'visits'; }
-function getPeopleStore() { return currentGroupId ? 'gp_' + currentGroupId : 'people'; }
-
-function updateGroupHeader() {
-  const h1 = document.querySelector('#screen-home .header h1');
-  if (!h1) return;
-  if (currentGroupId) {
-    const g = myGroups.find(g => g.id === currentGroupId);
-    h1.textContent = g ? g.name : 'Grupo privado';
-  } else {
-    h1.textContent = '🍽 Restaurant Rater';
-  }
-  // Actualizar auth para grupos privados (siempre autenticado en su grupo)
-  if (currentGroupId) {
-    isAuthenticated = true;
-    updateAuthUI();
-  } else {
-    checkAuth();
-    updateAuthUI();
-  }
-}
-
-function leaveGroup(id) {
-  if (!confirm('¿Salir de este grupo? No podrás acceder sin el PIN.')) return;
-  myGroups = myGroups.filter(g => g.id !== id);
-  saveMyGroups();
-  if (currentGroupId === id) switchGroup(null);
-  renderGroupsUI();
-  showToast('Has salido del grupo');
-}
-
-function renderGroupsUI() {
-  const el = document.getElementById('groups-list');
-  if (!el) return;
-  
-  let html = '<div class="card" style="cursor:pointer;' + (!currentGroupId ? 'border-color:var(--accent);border-width:2px;' : '') + '" onclick="switchGroup(null)">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
-  html += '<div><div style="font-size:15px;font-weight:700;color:var(--text);">🍽 Restaurant Rater</div>';
-  html += '<div style="font-size:12px;color:var(--text3);">Grupo público principal</div></div>';
-  html += (!currentGroupId ? '<div style="color:var(--accent);font-weight:700;font-size:13px;">ACTIVO</div>' : '');
-  html += '</div></div>';
-  
-  myGroups.forEach(g => {
-    const active = currentGroupId === g.id;
-    html += '<div class="card" style="' + (active ? 'border-color:var(--accent);border-width:2px;' : '') + '">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;">';
-    html += '<div style="cursor:pointer;flex:1;" onclick="switchGroup(\'' + g.id + '\')">';
-    html += '<div style="font-size:15px;font-weight:700;color:var(--text);">👥 ' + esc(g.name) + '</div>';
-    html += '<div style="font-size:12px;color:var(--text3);">Grupo privado</div></div>';
-    html += '<div style="display:flex;align-items:center;gap:8px;">';
-    html += (active ? '<span style="color:var(--accent);font-weight:700;font-size:13px;">ACTIVO</span>' : '');
-    html += '<button onclick="event.stopPropagation();leaveGroup(\'' + g.id + '\')" style="background:none;border:none;color:var(--danger);font-size:12px;cursor:pointer;">Salir</button>';
-    html += '</div></div></div>';
-  });
-  
-  el.innerHTML = html;
-}
-
-function checkGroupFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  const groupId = params.get('group');
-  if (groupId && !myGroups.find(g => g.id === groupId)) {
-    // Preguntar si quiere unirse
-    setTimeout(() => joinGroupFromURL(groupId), 1000);
-  }
-}
-
-async function joinGroupFromURL(id) {
-  const pin = prompt('Te han invitado a un grupo. Introduce el PIN para unirte:');
-  if (!pin || !pin.trim()) return;
-  
-  const online = await waitForFirebase(5000);
-  if (!online) { showToast('❌ Sin conexión'); return; }
-  
-  try {
-    const snapshot = await window._fbGet('groups/' + id);
-    if (!snapshot.exists()) { showToast('Grupo no encontrado'); return; }
-    const group = snapshot.val();
-    
-    const pinHash = await hashPin(pin.trim());
-    if (pinHash !== group.pinHash) { showToast('PIN incorrecto'); return; }
-    
-    myGroups.push({ id, name: group.name, pinHash: group.pinHash });
-    saveMyGroups();
-    switchGroup(id);
-    showToast('✓ Te uniste a "' + group.name + '"');
-  } catch(e) {
-    showToast('❌ Error: ' + e.message);
-  }
 }
 
 async function exportAllData() {
@@ -1852,7 +1625,7 @@ async function importAllData(event) {
     for (const v of data.visits) {
       const exists = visits.find(x => x.id === v.id);
       if (!exists) {
-        await DB.put(getVisitStore(), v);
+        await DB.put('visits', v);
         visits.push(v);
       }
     }
