@@ -529,7 +529,7 @@ const TOTAL_STEPS = 6;
 const DEFAULT_SCORE = 5.00;
 const STEP = 0.05;
 
-const CATEGORIES = ['Americana','Árabe','Bar','Brasileña','Cafetería','China','Colombiana','Ecuatoriana','Española','Francesa','Georgiana','Griega','Hamburguesería','India','Italiana','Japonesa','Kebab','Libanesa','Mariscos','Mexicana','Otro','Pastelería','Peruana','Pizzería','Sushi','Tailandesa','Turca','Vegetariana'];
+const CATEGORIES = ['Americana','Árabe','Bar','Brasileña','Cafetería','China','Colombiana','Ecuatoriana','Española','Francesa','Georgiana','Griega','Hamburguesería','Heladería','India','Italiana','Japonesa','Kebab','Libanesa','Mariscos','Mexicana','Otro','Pastelería','Peruana','Pizzería','Sushi','Tailandesa','Turca','Vegetariana'];
 
 // ═══════════════════════════ INIT ═══════════════════════════
 async function init() {
@@ -701,29 +701,56 @@ function confirmExit() {
 }
 
 // ═══════════════════════════ HOME ═══════════════════════════
+// Agrupa visitas del mismo restaurante (nombre+ciudad+país)
+function groupVisits() {
+  const groups = {};
+  visits.forEach(v => {
+    const key = [
+      (v.restaurantName||'').trim().toLowerCase(),
+      (v.city||'').trim().toLowerCase(),
+      (v.country||'').trim().toLowerCase()
+    ].join('|');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(v);
+  });
+  return Object.values(groups).map(vArr => {
+    vArr.sort((a,b) => (b.date||0) - (a.date||0));
+    const scores = vArr.map(v => calcFinalScore(v));
+    const avg = scores.reduce((a,b) => a+b, 0) / scores.length;
+    return { visits: vArr, latest: vArr[0], avg, count: vArr.length };
+  });
+}
+
 function renderHome() {
   const list = document.getElementById('home-list');
-  document.getElementById('home-subtitle').textContent = visits.length + ' restaurante' + (visits.length !== 1 ? 's' : '') + ' puntuado' + (visits.length !== 1 ? 's' : '');
-  if (visits.length === 0) {
+  const groups = groupVisits();
+  document.getElementById('home-subtitle').textContent = groups.length + ' restaurante' + (groups.length !== 1 ? 's' : '') + ' puntuado' + (groups.length !== 1 ? 's' : '');
+  if (groups.length === 0) {
     list.innerHTML = '<div class="empty"><div class="empty-icon">🍴</div><p>Todavía no hay visitas.<br>Pulsa + para empezar.</p></div>';
     return;
   }
-  list.innerHTML = [...visits].sort((a,b) => b.date - a.date).map(v => {
-    const score = calcFinalScore(v);
+  list.innerHTML = groups.sort((a,b) => (b.latest.date||0) - (a.latest.date||0)).map(g => {
+    const v = g.latest;
+    const score = g.avg;
     const chooser = people.find(p => p.id === v.chooserId);
     const dateStr = new Date(v.date).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric'});
     const sc = scoreColor(score);
-    return `<div class="card" style="cursor:pointer;" onclick="showDetail('${v.id}')">
+    const visitLabel = g.count > 1 ? `<span style="color:var(--accent);font-weight:600;">${g.count} visitas</span> · ` : '';
+    // Si hay múltiples visitas, showGroupDetail; si es una sola, showDetail normal
+    const onclick = g.count > 1
+      ? `showGroupDetail('${v.restaurantName.replace(/'/g,"\\'")}','${(v.city||'').replace(/'/g,"\\'")}','${(v.country||'').replace(/'/g,"\\'")}')`
+      : `showDetail('${v.id}')`;
+    return `<div class="card" style="cursor:pointer;" onclick="${onclick}">
       <div class="flex items-center justify-between">
         <div style="flex:1;min-width:0;">
           <div style="font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(v.restaurantName)}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:3px;">${v.category}${v.city ? ' · ' + esc(v.city) : ''} · ${dateStr}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px;">${v.category}${v.city ? ' · ' + esc(v.city) : ''} · ${visitLabel}${dateStr}</div>
           ${chooser ? `<div style="font-size:12px;color:var(--text3);">Eligió: <span style="color:var(--text2)">${chooser.name}</span></div>` : ''}
           <div style="font-size:12px;color:var(--text3);">${v.diners.length} comensal${v.diners.length!==1?'es':''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;padding-left:12px;">
           <div style="font-size:32px;font-weight:900;color:${sc};letter-spacing:-2px;">${score.toFixed(2)}</div>
-          <div style="font-size:10px;color:var(--text3);">/ 10</div>
+          <div style="font-size:10px;color:var(--text3);">${g.count > 1 ? 'avg' : '/ 10'}</div>
         </div>
       </div>
     </div>`;
@@ -1109,6 +1136,44 @@ function buildDetail(visit, isNew) {
     <div class="result-mini"><div class="result-mini-val">${bd.mScore.toFixed(2)}</div><div class="result-mini-lbl">Principales</div></div>
     <div class="result-mini"><div class="result-mini-val">${bd.hasDessert?bd.dScore.toFixed(2):'—'}</div><div class="result-mini-lbl">Postres</div></div>
   </div>
+  
+  <!-- Detalle por plato y comensal -->
+  ${(() => {
+    const sections = [
+      { key: 'starters', label: 'Entrantes', show: visit.hasStarter !== false && visit.starters && visit.starters.length > 0 },
+      { key: 'mains', label: 'Principales', show: visit.mains && visit.mains.length > 0 },
+      { key: 'desserts', label: 'Postres', show: visit.hasDessert !== false && visit.desserts && visit.desserts.length > 0 }
+    ];
+    const dinerIds = visit.diners || [];
+    let out = '';
+    sections.forEach(sec => {
+      if (!sec.show) return;
+      const plates = visit[sec.key];
+      if (!plates || !plates.length) return;
+      out += '<div style="margin-top:14px;"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">' + sec.label + '</div>';
+      plates.forEach(plate => {
+        out += '<div style="background:var(--bg2);border-radius:var(--r2);padding:10px 12px;margin-bottom:8px;">';
+        out += '<div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px;">' + esc(plate.name || 'Sin nombre') + '</div>';
+        const skipped = plate.skipped || {};
+        dinerIds.forEach(did => {
+          const person = people.find(p => p.id === did);
+          if (!person) return;
+          if (plate.scores && plate.scores[did] !== undefined) {
+            const isSkipped = !!skipped[did];
+            const val = parseFloat(plate.scores[did]);
+            const sc = scoreColor(val);
+            out += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;' + (isSkipped ? 'opacity:0.4;' : '') + '">';
+            out += '<span style="color:var(--text2);">' + person.name + (isSkipped ? ' (N/P)' : '') + '</span>';
+            out += '<span style="color:' + sc + ';font-weight:600;">' + val.toFixed(2) + '</span>';
+            out += '</div>';
+          }
+        });
+        out += '</div>';
+      });
+      out += '</div>';
+    });
+    return out;
+  })()}
   <div class="result-grid">
     <div class="result-mini"><div class="result-mini-val ${adjCls(bd.adjSvc)}">${adjFmt(bd.adjSvc)}</div><div class="result-mini-lbl">Δ Servicio</div></div>
     <div class="result-mini"><div class="result-mini-val ${adjCls(bd.adjPrc)}">${adjFmt(bd.adjPrc)}</div><div class="result-mini-lbl">Δ Precio</div></div>
@@ -1121,6 +1186,54 @@ function buildDetail(visit, isNew) {
     <button class="btn btn-secondary" style="flex:1;" onclick="closeDetail()">Cerrar</button>
     ${!isNew?`<button class="btn btn-danger" style="flex:0.6;padding:14px 10px;font-size:13px;" onclick="deleteVisit('${visit.id}')">Borrar</button>`:''}
   </div>`;
+}
+
+function showGroupDetail(name, city, country) {
+  const key = [name.trim().toLowerCase(), city.trim().toLowerCase(), country.trim().toLowerCase()].join('|');
+  const grouped = visits.filter(v =>
+    [v.restaurantName.trim().toLowerCase(), (v.city||'').trim().toLowerCase(), (v.country||'').trim().toLowerCase()].join('|') === key
+  ).sort((a,b) => (b.date||0) - (a.date||0));
+  if (!grouped.length) return;
+  const scores = grouped.map(v => calcFinalScore(v));
+  const avg = scores.reduce((a,b) => a+b, 0) / scores.length;
+  const sc = scoreColor(avg);
+  const first = grouped[0];
+  const loc = (first.city || first.country) ? (first.city ? esc(first.city) : '') + (first.city && first.country ? ' (' : '') + (first.country ? esc(first.country) : '') + (first.city && first.country ? ')' : '') : '';
+
+  let html = `<h3>${esc(first.restaurantName)}</h3>
+  <div class="result-score">
+    <div class="result-big" style="color:${sc}">${avg.toFixed(2)}</div>
+    <div class="result-label" style="font-weight:600;color:var(--text);font-size:15px;">${esc(first.restaurantName)}</div>
+    ${loc ? `<div class="result-label" style="color:var(--accent);font-weight:600;">📍 ${loc}</div>` : ''}
+    <div class="result-label">${first.category} · ${grouped.length} visita${grouped.length!==1?'s':''}</div>
+  </div>
+  <div style="font-size:14px;font-weight:700;color:var(--text);margin:16px 0 10px;">Histórico de visitas</div>`;
+
+  grouped.forEach((v, i) => {
+    const vScore = calcFinalScore(v);
+    const vSc = scoreColor(vScore);
+    const dateStr = new Date(v.date).toLocaleDateString('es-ES', {day:'2-digit',month:'long',year:'numeric'});
+    const diners = v.diners.map(id => people.find(p => p.id === id)).filter(Boolean);
+    const chooser = people.find(p => p.id === v.chooserId);
+    html += `<div class="card" style="cursor:pointer;margin-bottom:8px;" onclick="event.stopPropagation();showDetail('${v.id}')">
+      <div class="flex items-center justify-between">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;color:var(--text);">Visita ${i+1} — ${dateStr}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${diners.map(d=>d.name).join(', ')}</div>
+          ${chooser ? `<div style="font-size:12px;color:var(--text3);">Eligió: <span style="color:var(--text2)">${chooser.name}</span></div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;padding-left:12px;">
+          <div style="font-size:24px;font-weight:900;color:${vSc};">${vScore.toFixed(2)}</div>
+          <div style="font-size:10px;color:var(--text3);">/ 10</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="margin-top:12px;"><button class="btn btn-secondary" style="width:100%;" onclick="closeDetail()">Cerrar</button></div>`;
+
+  document.getElementById('detail-content').innerHTML = html;
+  document.getElementById('detail-modal').classList.add('open');
 }
 
 function closeDetail(e) { if(!e||e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open'); }
@@ -1150,14 +1263,19 @@ function rnc(i){return i===0?'gold':i===1?'silver':i===2?'bronze':'';}
 function renderTabGlobal() {
   const el=document.getElementById('tab-global');
   if(!visits.length){el.innerHTML='<div class="empty"><div class="empty-icon">🏆</div><p>Sin datos todavía</p></div>';return;}
-  const scored=[...visits].map(v=>({...v,score:calcFinalScore(v)})).sort((a,b)=>b.score-a.score);
-  el.innerHTML='<div class="card">'+scored.map((v,i)=>{
-    const sc=scoreColor(v.score);
+  const groups = groupVisits().sort((a,b) => b.avg - a.avg);
+  el.innerHTML='<div class="card">'+groups.map((g,i)=>{
+    const v = g.latest;
+    const sc=scoreColor(g.avg);
     const d=v.diners.map(id=>people.find(p=>p.id===id)).filter(Boolean);
-    return `<div class="rank-item" onclick="showDetail('${v.id}')">
+    const countLabel = g.count > 1 ? ` · ${g.count} visitas` : '';
+    const onclick = g.count > 1
+      ? `showGroupDetail('${v.restaurantName.replace(/'/g,"\\'")}','${(v.city||'').replace(/'/g,"\\'")}','${(v.country||'').replace(/'/g,"\\'")}')`
+      : `showDetail('${v.id}')`;
+    return `<div class="rank-item" onclick="${onclick}">
       <div class="rank-num ${rnc(i)}">${i+1}</div>
-      <div class="rank-info"><div class="rank-name">${esc(v.restaurantName)}</div><div class="rank-sub">${v.category} · ${d.length} comensales</div></div>
-      <div style="text-align:right;"><div class="rank-score" style="color:${sc}">${v.score.toFixed(2)}</div><div style="font-size:10px;color:var(--text3);">/ 10</div></div>
+      <div class="rank-info"><div class="rank-name">${esc(v.restaurantName)}</div><div class="rank-sub">${v.category}${v.city ? ' · ' + esc(v.city) : ''}${countLabel}</div></div>
+      <div style="text-align:right;"><div class="rank-score" style="color:${sc}">${g.avg.toFixed(2)}</div><div style="font-size:10px;color:var(--text3);">${g.count > 1 ? 'avg' : '/ 10'}</div></div>
     </div>`;
   }).join('')+'</div>';
 }
