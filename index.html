@@ -369,6 +369,7 @@ let pendingNavTarget = null;
 let syncInProgress = false;
 let isAuthenticated = false; // false = invitado, true = usuario con escritura
 let isAdminMode = false; // true tras introducir PIN admin — habilita edición de visitas
+let openDetailVisitId = null; // ID de la visita cuyo detalle está abierto, o null
 
 function checkAuth() {
   isAuthenticated = localStorage.getItem('rater-auth') === '1';
@@ -457,13 +458,22 @@ async function syncWithFirebase(manual = false) {
       }
     }
 
-    // ── SUBIR: visitas locales que no están en Firebase ni en tombstones
+    // ── SUBIR: visitas locales que no están en Firebase, o que tienen
+    //    una edición local más reciente que la remota
     let uploaded = 0;
     for (const v of visits) {
       // No resubir visitas que ya fueron eliminadas por otro dispositivo
-      if (!remoteVisits[v.id] && !remoteTombstones[v.id]) {
+      if (remoteTombstones[v.id]) continue;
+      if (!remoteVisits[v.id]) {
         await window._fbSet('visits/' + v.id, v);
         uploaded++;
+      } else {
+        const localUpdated = v.updatedAt || 0;
+        const remoteUpdated = remoteVisits[v.id].updatedAt || 0;
+        if (localUpdated > remoteUpdated) {
+          await window._fbSet('visits/' + v.id, v);
+          uploaded++;
+        }
       }
     }
 
@@ -476,11 +486,23 @@ async function syncWithFirebase(manual = false) {
 
     // ── DESCARGAR: visitas remotas que no están en local
     let downloaded = 0;
+    let updated = 0;
     for (const [id, v] of Object.entries(remoteVisits)) {
-      if (!visits.find(x => x.id === id)) {
+      const localIdx = visits.findIndex(x => x.id === id);
+      if (localIdx === -1) {
+        // No existe local — descargar normal
         await DB.put('visits', v);
         visits.push(v);
         downloaded++;
+      } else {
+        // Existe local — comparar updatedAt para detectar ediciones remotas
+        const localUpdated = visits[localIdx].updatedAt || 0;
+        const remoteUpdated = v.updatedAt || 0;
+        if (remoteUpdated > localUpdated) {
+          await DB.put('visits', v);
+          visits[localIdx] = v;
+          updated++;
+        }
       }
     }
 
@@ -508,6 +530,7 @@ async function syncWithFirebase(manual = false) {
       const parts = [];
       if (uploaded > 0)   parts.push(`↑${uploaded} subida${uploaded>1?'s':''}`);
       if (downloaded > 0) parts.push(`↓${downloaded} descarga${downloaded>1?'s':''}`);
+      if (updated > 0)    parts.push(`✏️${updated} actualizado${updated>1?'s':''}`);
       if (deleted > 0)    parts.push(`🗑️ ${deleted} eliminado${deleted>1?'s':''}`);
       const msg = parts.length > 0
         ? `✓ Sync — ${parts.join(', ')}`
@@ -515,6 +538,14 @@ async function syncWithFirebase(manual = false) {
       showToast(msg);
     } else if (downloaded > 0) {
       showToast(`✓ ${downloaded} restaurante${downloaded>1?'s':''} nuevo${downloaded>1?'s':''}`);
+    } else if (updated > 0) {
+      showToast(`✓ ${updated} restaurante${updated>1?'s':''} actualizado${updated>1?'s':''}`);
+    }
+
+    // Si el detalle abierto fue actualizado por el sync, refrescarlo
+    if (updated > 0 && openDetailVisitId) {
+      const v = visits.find(x => x.id === openDetailVisitId);
+      if (v) document.getElementById('detail-content').innerHTML = buildDetail(v, false);
     }
 
   } catch (err) {
@@ -1146,6 +1177,7 @@ async function wizardNext() {
   if (wizardStep===TOTAL_STEPS-1) {
     wizardData.pricePerPerson=parseFloat(document.getElementById('s5-price')?.value)||null;
     wizardData.note=document.getElementById('s5-note')?.value.trim()||'';
+    if (wizardEditing) wizardData.updatedAt = Date.now();
     await DB.put('visits', wizardData);
     visits=await DB.getAll('visits');
     // Subir inmediatamente a Firebase (fire-and-forget)
@@ -1173,6 +1205,7 @@ function showResult(visit) {
 }
 function showDetail(id) {
   const v=visits.find(v=>v.id===id); if(!v) return;
+  openDetailVisitId = id;
   document.getElementById('detail-content').innerHTML = buildDetail(v, false);
   document.getElementById('detail-modal').classList.add('open');
 }
@@ -1297,7 +1330,7 @@ function showGroupDetail(name, city, country) {
   document.getElementById('detail-modal').classList.add('open');
 }
 
-function closeDetail(e) { if(!e||e.target===document.getElementById('detail-modal')) document.getElementById('detail-modal').classList.remove('open'); }
+function closeDetail(e) { if(!e||e.target===document.getElementById('detail-modal')) { document.getElementById('detail-modal').classList.remove('open'); openDetailVisitId = null; } }
 async function deleteVisit(id) {
   if (!isAuthenticated) { promptWritePin(() => deleteVisit(id)); return; }
   if(!confirm('¿Borrar esta visita?')) return;
@@ -1593,7 +1626,18 @@ async function promptAdminPin() {
     document.getElementById('admin-danger-zone').style.display = 'block';
     document.getElementById('admin-btn-card').style.display = 'none';
     isAdminMode = true;
-    showToast('✓ Modo admin activado — ahora puedes editar visitas');
+    // Si hay un detalle abierto, reconstruirlo para mostrar botón Editar
+    if (openDetailVisitId) {
+      const v = visits.find(v => v.id === openDetailVisitId);
+      if (v) {
+        document.getElementById('detail-content').innerHTML = buildDetail(v, false);
+        showToast('✓ Modo admin activado — botón Editar disponible');
+      } else {
+        showToast('✓ Modo admin activado');
+      }
+    } else {
+      showToast('✓ Modo admin activado');
+    }
   } else {
     showToast('PIN incorrecto');
   }
