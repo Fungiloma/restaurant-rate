@@ -364,9 +364,11 @@ let people = [];
 let visits = [];
 let wizardData = {};
 let wizardStep = 0;
+let wizardEditing = false; // true cuando editVisit() está en curso
 let pendingNavTarget = null;
 let syncInProgress = false;
 let isAuthenticated = false; // false = invitado, true = usuario con escritura
+let isAdminMode = false; // true tras introducir PIN admin — habilita edición de visitas
 
 function checkAuth() {
   isAuthenticated = localStorage.getItem('rater-auth') === '1';
@@ -721,6 +723,7 @@ function confirmExit() {
   pendingNavTarget = null;
   wizardData = {};
   wizardStep = 0;
+  wizardEditing = false;
   _doGoScreen(target);
 }
 
@@ -787,6 +790,7 @@ function scoreColor(s) {
 
 // ═══════════════════════════ WIZARD ═══════════════════════════
 function startNewVisit() {
+  wizardEditing = false;
   wizardData = {
     id: crypto.randomUUID(), date: Date.now(),
     restaurantName:'', category:'', country:'', city:'', chooserId:null,
@@ -800,7 +804,32 @@ function startNewVisit() {
   renderWizardStep();
 }
 
-function cancelNew() { goScreen('home'); }
+function editVisit(id) {
+  const v = visits.find(v => v.id === id);
+  if (!v) return;
+  if (!isAdminMode) { showToast('Solo en modo admin'); return; }
+  // Clonar profundamente la visita para editar sin mutar el objeto original
+  // hasta que se guarde
+  wizardData = JSON.parse(JSON.stringify(v));
+  // Asegurar consistencia de counts con los arrays reales (visitas antiguas
+  // pueden no tener estos campos guardados explícitamente)
+  wizardData.starterCount = wizardData.starters?.length || 1;
+  wizardData.mainCount = wizardData.mains?.length || 1;
+  wizardData.dessertCount = wizardData.desserts?.length || 1;
+  if (wizardData.hasStarter === undefined) wizardData.hasStarter = (wizardData.starters?.length || 0) > 0;
+  if (wizardData.hasDessert === undefined) wizardData.hasDessert = (wizardData.desserts?.length || 0) > 0;
+  if (wizardData.mainShared === undefined) wizardData.mainShared = false;
+  wizardEditing = true;
+  wizardStep = 0;
+  closeDetail();
+  goScreen('new');
+  renderWizardStep();
+}
+
+function cancelNew() {
+  wizardEditing = false;
+  goScreen('home');
+}
 
 function updateStepUI() {
   for (let i = 0; i < TOTAL_STEPS; i++) {
@@ -1123,8 +1152,15 @@ async function wizardNext() {
     waitForFirebase(3000).then(online => {
       if (online) window._fbSet('visits/' + wizardData.id, wizardData).catch(e => console.warn('Firebase upload:', e));
     });
+    const wasEditing = wizardEditing;
+    wizardEditing = false;
     _doGoScreen('home');
-    showResult(wizardData);
+    if (wasEditing) {
+      showToast('✓ Visita actualizada');
+      showDetail(wizardData.id);
+    } else {
+      showResult(wizardData);
+    }
     return;
   }
   wizardStep++; renderWizardStep();
@@ -1208,6 +1244,7 @@ function buildDetail(visit, isNew) {
   ${visit.note?`<div style="background:var(--bg2);border-radius:var(--r2);padding:12px;font-size:13px;color:var(--text2);margin-bottom:12px;border-left:3px solid var(--accent);">💬 ${esc(visit.note)}</div>`:''}
   <div style="display:flex;gap:8px;margin-top:12px;">
     <button class="btn btn-secondary" style="flex:1;" onclick="closeDetail()">Cerrar</button>
+    ${!isNew && isAdminMode?`<button class="btn btn-secondary" style="flex:0.6;padding:14px 10px;font-size:13px;" onclick="editVisit('${visit.id}')">✏️ Editar</button>`:''}
     ${!isNew?`<button class="btn btn-danger" style="flex:0.6;padding:14px 10px;font-size:13px;" onclick="deleteVisit('${visit.id}')">Borrar</button>`:''}
   </div>`;
 }
@@ -1555,7 +1592,8 @@ async function promptAdminPin() {
   if (hashHex === '1ef79462017df1bf88a3e99aff3a3b5d5935816797117cfa617e8fa30e31be2d') {
     document.getElementById('admin-danger-zone').style.display = 'block';
     document.getElementById('admin-btn-card').style.display = 'none';
-    showToast('✓ Modo admin activado');
+    isAdminMode = true;
+    showToast('✓ Modo admin activado — ahora puedes editar visitas');
   } else {
     showToast('PIN incorrecto');
   }
