@@ -14,6 +14,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, get, child, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBhKigHn2dxh8Jk9GCByJbAn4FADz8YXus",
@@ -33,6 +34,28 @@
   window._fbGet    = (path)       => get(child(ref(db), path));
   window._fbRemove = (path)       => remove(ref(db, path));
   window._fbReady  = true;
+
+  const auth = getAuth(app);
+
+  // Persistencia local: el token sobrevive cierres de app/navegador
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+  // Sincronizar estado Firebase Auth → localStorage → app
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      localStorage.setItem('rater-auth', '1');
+    } else {
+      if (localStorage.getItem('rater-auth') === '1') {
+        localStorage.removeItem('rater-auth');
+      }
+    }
+    // checkAuth y updateAuthUI están en el script no-module
+    if (typeof checkAuth === 'function') { checkAuth(); updateAuthUI(); }
+  });
+
+  window._fbSignIn  = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
+  window._fbSignOut = () => signOut(auth);
+
   document.dispatchEvent(new Event('firebase-ready'));
 </script>
 <style>
@@ -346,27 +369,27 @@ let syncInProgress = false;
 let isAuthenticated = false; // false = invitado, true = usuario con escritura
 
 function checkAuth() {
-  isAuthenticated = localStorage.getItem('rater-auth') === '2eee286636f8adfd9ca79584b6c84256e7c7f303670f412cd53f75ad0685db2a';
+  isAuthenticated = localStorage.getItem('rater-auth') === '1';
 }
+
 
 async function promptWritePin(onSuccess) {
   const pin = prompt('Introduce la contraseña para continuar:');
   if (pin === null) return;
-  const msgBuffer = new TextEncoder().encode(pin);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  if (hashHex === '2eee286636f8adfd9ca79584b6c84256e7c7f303670f412cd53f75ad0685db2a') {
-    localStorage.setItem('rater-auth', hashHex);
+  try {
+    await window._fbSignIn('rater@restaurantrater.com', pin);
     isAuthenticated = true;
+    localStorage.setItem('rater-auth', '1');
     updateAuthUI();
     showToast('✓ Acceso concedido');
     if (onSuccess) onSuccess();
-  } else {
+  } catch(e) {
     showToast('Contraseña incorrecta');
   }
 }
 
 function logout() {
+  window._fbSignOut().catch(() => {});
   localStorage.removeItem('rater-auth');
   isAuthenticated = false;
   updateAuthUI();
@@ -591,9 +614,10 @@ function calcBreakdown(visit) {
   let mScore = DEFAULT_SCORE;
   if (visit.mains && visit.mains.length > 0) {
     if (visit.mainShared) {
-      // COMPARTIDOS: cada plato lo puntúan todos los comensales
-      const plateAvgs = visit.mains.map(p => plateAvg(p, ids));
-      mScore = plateAvgs.reduce((a,b) => a+b, 0) / plateAvgs.length;
+      // COMPARTIDOS: excluir comensales con N/P en cada plato
+      const plateAvgs = visit.mains.map(p => plateAvgSkip(p, ids));
+      const validAvgs = plateAvgs.filter(v => v !== null);
+      mScore = validAvgs.length > 0 ? validAvgs.reduce((a,b) => a+b, 0) / validAvgs.length : DEFAULT_SCORE;
     } else {
       // INDIVIDUALES: orden alfabético, igual que getDiners() en el render
       const sortedIds = [...ids]
