@@ -1711,37 +1711,6 @@ async function importAllData(event) {
 }
 
 
- — Restaurantes elegidos</h3>
-    <div style="background:var(--bg2);border-radius:var(--r2);padding:12px;margin-bottom:12px;text-align:center;">
-      <div style="font-size:13px;color:var(--text3);">Media de puntuación</div>
-      <div style="font-size:28px;font-weight:900;color:var(--accent);">${avg.toFixed(2)}</div>
-      <div style="font-size:12px;color:var(--text3);">${scored.length} restaurante${scored.length!==1?'s':''}</div>
-    </div>
-    <div class="card">`;
-  
-  if (scored.length === 0) {
-    html += '<div class="empty" style="padding:30px 0;"><p>Sin restaurantes</p></div>';
-  } else {
-    html += scored.map((v,i) => {
-      const sc = scoreColor(v.score);
-      return `<div class="rank-item" onclick="showDetail('${v.id}')">
-        <div class="rank-num">${i+1}</div>
-        <div class="rank-info">
-          <div class="rank-name">${esc(v.restaurantName)}</div>
-          <div class="rank-sub">${v.category}</div>
-        </div>
-        <div style="text-align:right;"><div class="rank-score" style="color:${sc}">${v.score.toFixed(2)}</div></div>
-      </div>`;
-    }).join('');
-  }
-  
-  html += '</div><div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-secondary" style="flex:1;" onclick="closeDetail()">Cerrar</button></div>';
-  
-  document.getElementById('detail-content').innerHTML = html;
-  document.getElementById('detail-modal').classList.add('open');
-}
-
-
 
 function _unused(store, plateIdx, dinerId, delta) {
   const plate = wizardData[store][plateIdx];
